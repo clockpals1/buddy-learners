@@ -34,7 +34,7 @@ function OnboardingWizard() {
   
   // Kids data
   const [kids, setKids] = useState<Array<{ name: string; age: string; track: string }>>([]);
-  const [currentKid, setCurrentKid] = useState({ name: "", age: "", track: "explorers" });
+  const [currentKid, setCurrentKid] = useState({ name: "", age: "", track: "spark_cubs" });
   
   // Plan data
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -67,12 +67,26 @@ function OnboardingWizard() {
       });
       if (error) throw error;
       
-      // Record consents
-      await supabase.from("consent_records").insert([
-        { parent_id: data.user?.id, document_type: "terms", document_version: "v1.0" },
-        { parent_id: data.user?.id, document_type: "privacy", document_version: "v1.0" },
-        { parent_id: data.user?.id, document_type: "parental_consent", document_version: "v1.0" },
-      ]);
+      if (data.user) {
+        // Create profile record
+        await supabase.from("profiles").insert({
+          id: data.user.id,
+          full_name: fullName,
+        });
+        
+        // Record consents
+        await supabase.from("consent_records").insert([
+          { parent_id: data.user.id, document_type: "terms", document_version: "v1.0" },
+          { parent_id: data.user.id, document_type: "privacy", document_version: "v1.0" },
+          { parent_id: data.user.id, document_type: "parental_consent", document_version: "v1.0" },
+        ]);
+        
+        // Assign parent role
+        await supabase.from("user_roles").insert({
+          user_id: data.user.id,
+          role: "parent",
+        });
+      }
       
       toast.success("Account created!");
       setStep("add-kids");
@@ -89,7 +103,7 @@ function OnboardingWizard() {
       return;
     }
     setKids([...kids, { ...currentKid }]);
-    setCurrentKid({ name: "", age: "", track: "explorers" });
+    setCurrentKid({ name: "", age: "", track: "spark_cubs" });
   }
   
   function removeKid(index: number) {
@@ -106,9 +120,9 @@ function OnboardingWizard() {
       for (const kid of kids) {
         await supabase.from("children").insert({
           parent_id: user.id,
-          name: kid.name,
+          display_name: kid.name,
           age: parseInt(kid.age),
-          track: kid.track,
+          track: kid.track as any,
         });
       }
       
@@ -386,9 +400,9 @@ function OnboardingWizard() {
                       onChange={(e) => setCurrentKid({ ...currentKid, track: e.target.value })}
                       className="px-4 py-3 rounded-xl border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-coral text-white"
                     >
-                      <option value="explorers">Explorers (6-9)</option>
-                      <option value="juniors">Juniors (10-12)</option>
-                      <option value="scholars">Scholars (13-15)</option>
+                      <option value="spark_cubs">Spark Cubs (6-9)</option>
+                      <option value="code_rangers">Code Rangers (10-12)</option>
+                      <option value="cyber_pioneers">Cyber Pioneers (13-15)</option>
                     </select>
                   </div>
                   <button

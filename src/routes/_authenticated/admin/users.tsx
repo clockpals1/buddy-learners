@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
-import { Search, Users, Shield, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Search, Users, Shield, ChevronDown, ChevronUp, Loader2, Edit2, Trash2, X, Check } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
   head: () => ({ meta: [{ title: "Users · Leafva Admin" }] }),
@@ -17,8 +18,11 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 function UsersPage() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState("");
 
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -65,6 +69,42 @@ function UsersPage() {
   const filtered = (profiles ?? []).filter((p) => {
     const q = search.toLowerCase();
     return !q || (p.full_name?.toLowerCase().includes(q) ?? false) || p.id.includes(q);
+  });
+
+  const updateNameMutation = useMutation({
+    mutationFn: async ({ userId, fullName }: { userId: string; fullName: string }) => {
+      const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success("User name updated");
+      setEditingName(null);
+      setEditNameValue("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      // Delete user's children
+      await supabase.from("children").delete().eq("parent_id", userId);
+      // Delete user's enrollments
+      await supabase.from("enrollments").delete().eq("parent_id", userId);
+      // Delete user's roles
+      await supabase.from("user_roles").delete().eq("user_id", userId);
+      // Delete user's profile
+      await supabase.from("profiles").delete().eq("id", userId);
+      // Delete auth user (requires service role)
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success("User deleted");
+      setExpandedId(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const cell = "px-4 py-3 text-sm";
@@ -127,9 +167,36 @@ function UsersPage() {
                           <div className="h-7 w-7 rounded-full grid place-items-center text-xs font-bold" style={{ background: roleInfo.color + "25", color: roleInfo.color }}>
                             {(u.full_name ?? "?")[0]?.toUpperCase()}
                           </div>
-                          <div>
-                            <p className="font-medium" style={{ color: "#f1f5f9" }}>{u.full_name ?? "—"}</p>
-                            <p className="text-xs font-mono" style={{ color: "rgba(226,232,240,0.35)" }}>{u.id.slice(0, 8)}…</p>
+                          <div className="flex-1">
+                            {editingName === u.id ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  value={editNameValue}
+                                  onChange={(e) => setEditNameValue(e.target.value)}
+                                  className="h-7 px-2 rounded text-sm focus:outline-none"
+                                  style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#f1f5f9" }}
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => updateNameMutation.mutate({ userId: u.id, fullName: editNameValue })}
+                                  className="p-1 hover:bg-green-500/20 rounded"
+                                >
+                                  <Check className="h-3.5 w-3.5 text-green-400" />
+                                </button>
+                                <button
+                                  onClick={() => { setEditingName(null); setEditNameValue(""); }}
+                                  className="p-1 hover:bg-red-500/20 rounded"
+                                >
+                                  <X className="h-3.5 w-3.5 text-red-400" />
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="font-medium" style={{ color: "#f1f5f9" }}>{u.full_name ?? "—"}</p>
+                                <p className="text-xs font-mono" style={{ color: "rgba(226,232,240,0.35)" }}>{u.id.slice(0, 8)}…</p>
+                              </>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -156,7 +223,7 @@ function UsersPage() {
                     {isOpen && (
                       <tr key={`${u.id}-expand`} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                         <td colSpan={6} className="px-6 py-4" style={{ background: "rgba(255,255,255,0.03)" }}>
-                          <div className="grid sm:grid-cols-2 gap-4">
+                          <div className="grid sm:grid-cols-3 gap-4">
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "rgba(226,232,240,0.4)" }}>Children</p>
                               {u.children.length === 0 ? (
@@ -177,6 +244,26 @@ function UsersPage() {
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "rgba(226,232,240,0.4)" }}>Role Management</p>
                               <RoleSelector userId={u.id} currentRole={u.role} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "rgba(226,232,240,0.4)" }}>Actions</p>
+                              <div className="flex flex-col gap-2">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setEditingName(u.id); setEditNameValue(u.full_name ?? ""); }}
+                                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium"
+                                  style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8" }}
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" /> Edit Name
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); if (confirm("Are you sure you want to delete this user? This action cannot be undone.")) deleteUserMutation.mutate(u.id); }}
+                                  disabled={deleteUserMutation.isPending}
+                                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium"
+                                  style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" /> Delete User
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -199,14 +286,21 @@ function UsersPage() {
 }
 
 function RoleSelector({ userId, currentRole }: { userId: string; currentRole: string }) {
+  const qc = useQueryClient();
   const [role, setRole] = useState(currentRole);
   const [saving, setSaving] = useState(false);
   const roles = Object.keys(ROLE_LABELS) as (keyof typeof ROLE_LABELS)[];
 
   async function updateRole(newRole: string) {
     setSaving(true);
-    await supabase.from("user_roles").upsert({ user_id: userId, role: newRole as any }, { onConflict: "user_id" });
-    setRole(newRole);
+    const { error } = await supabase.from("user_roles").upsert({ user_id: userId, role: newRole as any }, { onConflict: "user_id" });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setRole(newRole);
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success("Role updated");
+    }
     setSaving(false);
   }
 
