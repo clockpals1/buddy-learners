@@ -42,8 +42,6 @@ function TypingNinjas() {
   const [totalStars, setTotalStars] = useState(0);
 
   const gameRef = useRef<HTMLDivElement>(null);
-  const spawnTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const gameLoopRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const currentWorld = WORLDS[world];
   const speedMultiplier = 1 + (level * 0.1);
@@ -112,30 +110,15 @@ function TypingNinjas() {
     };
 
     setLetters(prev => [...prev, newLetter]);
-    spawnTimerRef.current = setTimeout(spawnLetter, spawnRate);
   }
 
-  function gameLoop() {
+  // Spawn letters periodically
+  useEffect(() => {
     if (!isPlaying || isPaused) return;
 
-    setLetters(prev => {
-      const updated = prev.map(letter => ({
-        ...letter,
-        y: letter.y + letter.speed,
-      }));
-
-      // Check for letters that hit the ground
-      const missed = updated.filter(l => l.y > 500);
-      if (missed.length > 0) {
-        setLives(prev => Math.max(0, prev - missed.length));
-        setCombo(0);
-      }
-
-      return updated.filter(l => l.y <= 500);
-    });
-
-    gameLoopRef.current = setTimeout(gameLoop, 16);
-  }
+    const interval = setInterval(spawnLetter, spawnRate);
+    return () => clearInterval(interval);
+  }, [isPlaying, isPaused, spawnRate]);
 
   function startGame() {
     setIsPlaying(true);
@@ -144,27 +127,46 @@ function TypingNinjas() {
     setLives(3);
     setCombo(0);
     setLetters([]);
-    spawnTimerRef.current = setTimeout(spawnLetter, 1000);
-    gameLoopRef.current = setTimeout(gameLoop, 16);
+    // Spawn first letter immediately
+    spawnLetter();
   }
 
   function pauseGame() {
     setIsPaused(true);
-    clearTimeout(spawnTimerRef.current);
-    clearTimeout(gameLoopRef.current);
   }
 
   function resumeGame() {
     setIsPaused(false);
-    spawnTimerRef.current = setTimeout(spawnLetter, 1000);
-    gameLoopRef.current = setTimeout(gameLoop, 16);
   }
+
+  // Game loop using useEffect
+  useEffect(() => {
+    if (!isPlaying || isPaused) return;
+
+    const interval = setInterval(() => {
+      setLetters(prev => {
+        const updated = prev.map(letter => ({
+          ...letter,
+          y: letter.y + letter.speed,
+        }));
+
+        // Check for letters that hit the ground
+        const missed = updated.filter(l => l.y > 500);
+        if (missed.length > 0) {
+          setLives(prev => Math.max(0, prev - missed.length));
+          setCombo(0);
+        }
+
+        return updated.filter(l => l.y <= 500);
+      });
+    }, 16);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, isPaused]);
 
   function endGame() {
     setIsPlaying(false);
     setIsPaused(false);
-    clearTimeout(spawnTimerRef.current);
-    clearTimeout(gameLoopRef.current);
 
     // Calculate stars based on score
     const stars = score >= 100 ? 3 : score >= 50 ? 2 : score >= 20 ? 1 : 0;
@@ -430,11 +432,6 @@ function TypingNinjas() {
               className="relative rounded-2xl overflow-hidden"
               style={{ height: "500px", background: "linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%)", border: `3px solid ${currentWorld.color}` }}
             >
-              {/* Debug info */}
-              <div className="absolute top-2 left-2 text-white text-xs bg-black/50 px-2 py-1 rounded">
-                Letters: {letters.length} | Playing: {isPlaying ? "Yes" : "No"} | Paused: {isPaused ? "Yes" : "No"}
-              </div>
-
               {/* Keyboard hint at bottom */}
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/30 backdrop-blur">
                 <div className="flex justify-center gap-2">

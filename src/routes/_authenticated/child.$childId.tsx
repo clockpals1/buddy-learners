@@ -137,6 +137,16 @@ function LessonsTab({ childId, track, meta }: { childId: string; track: Track; m
     queryFn: () => checkFeatureAccess(childId, "lessons"),
   });
 
+  const { data: plans } = useQuery({
+    queryKey: ["plans"],
+    queryFn: async () => {
+      const { data } = await supabase.from("plans").select("id, name, kind").eq("is_active", true).order("price_cents");
+      return data ?? [];
+    },
+  });
+
+  const firstPlan = plans?.[0];
+
   const { data: courses } = useQuery({
     queryKey: ["courses-portal", track],
     queryFn: async () => {
@@ -179,7 +189,7 @@ function LessonsTab({ childId, track, meta }: { childId: string; track: Track; m
         </p>
         <Link
           to="/checkout"
-          search={{ childId }}
+          search={{ planId: firstPlan?.id, childId }}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition hover:opacity-90"
           style={{ background: meta.color, color: "white" }}
         >
@@ -273,6 +283,16 @@ function GamesTab({ childId, track, meta }: { childId: string; track: string; me
     },
   });
 
+  const { data: plans } = useQuery({
+    queryKey: ["plans"],
+    queryFn: async () => {
+      const { data } = await supabase.from("plans").select("id, name, kind").eq("is_active", true).order("price_cents");
+      return data ?? [];
+    },
+  });
+
+  const firstPlan = plans?.[0];
+
   return (
     <div className="space-y-4">
       <p className="text-sm font-semibold" style={{ color: "oklch(0.4 0.02 270)" }}>Games for {meta.label}</p>
@@ -306,10 +326,10 @@ function GamesTab({ childId, track, meta }: { childId: string; track: string; me
                   Play now
                 </Link>
               )}
-              {isLocked && !g.soon && (
+              {isLocked && !g.soon && firstPlan && (
                 <Link
                   to="/checkout"
-                  search={{ childId }}
+                  search={{ planId: firstPlan.id, childId }}
                   className="mt-4 w-full py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 flex items-center justify-center gap-2"
                   style={{ background: "oklch(0.92 0.01 270)", color: "oklch(0.4 0.02 270)" }}
                 >
