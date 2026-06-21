@@ -33,11 +33,15 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           NODE_ENV: production
 
-      - name: Install Wrangler
-        run: npm install -g wrangler@4
-
-      - name: Deploy to Cloudflare Pages
-        run: wrangler pages deploy .output/public --project-name=leafva-academy --branch=main
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Scan build output
+        run: |
+          echo "== Top-level files/dirs =="
+          ls -la
+          echo "== Any .output? =="
+          find .output -maxdepth 4 2>/dev/null || echo "NO .output"
+          echo "== Any dist? =="
+          find dist -maxdepth 4 2>/dev/null || echo "NO dist"
+          echo "== Any .vinxi? =="
+          find .vinxi -maxdepth 4 2>/dev/null || echo "NO .vinxi"
+          echo "== All HTML/MJS files (not node_modules) =="
+          find . -not -path "*/node_modules/*" -not -path "*/.git/*" \( -name "*.html" -o -name "*.mjs" -o -name "_worker.js" \) 2>/dev/null
