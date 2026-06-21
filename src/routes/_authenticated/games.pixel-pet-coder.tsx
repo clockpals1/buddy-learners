@@ -184,7 +184,12 @@ function PixelPetCoder() {
     setIsRunning(true);
     setTimeLeft(currentLevel.timeLimit);
     
-    let currentPos = { ...petPos };
+    // Reset pet to starting position
+    const startPos = { x: 1, y: 1 };
+    setPetPos(startPos);
+    setCollected(new Set());
+    
+    let currentPos = { ...startPos };
     
     for (const block of blocks) {
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -218,6 +223,11 @@ function PixelPetCoder() {
     }
     
     setIsRunning(false);
+  }
+
+  function clearBlocks() {
+    if (isRunning || isComplete) return;
+    setBlocks([]);
   }
 
   function resetLevel() {
@@ -560,15 +570,25 @@ function PixelPetCoder() {
               )}
             </div>
 
-            <button
-              onClick={runCode}
-              disabled={blocks.length === 0 || isRunning || isComplete}
-              className="w-full h-14 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition hover:scale-105 disabled:opacity-50"
-              style={{ background: "#7c3aed", color: "white" }}
-            >
-              <Play className="h-6 w-6" />
-              {isRunning ? "Running..." : "Run Code"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={clearBlocks}
+                disabled={blocks.length === 0 || isRunning || isComplete}
+                className="flex-1 h-14 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition hover:scale-105 disabled:opacity-50"
+                style={{ background: "#f87171", color: "white" }}
+              >
+                Clear
+              </button>
+              <button
+                onClick={runCode}
+                disabled={blocks.length === 0 || isRunning || isComplete}
+                className="flex-1 h-14 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition hover:scale-105 disabled:opacity-50"
+                style={{ background: "#7c3aed", color: "white" }}
+              >
+                <Play className="h-6 w-6" />
+                {isRunning ? "Running..." : "Run"}
+              </button>
+            </div>
           </div>
         </div>
       </main>
