@@ -34,14 +34,52 @@ jobs:
           NODE_ENV: production
 
       - name: Scan build output
+        id: scan
         run: |
-          echo "== Top-level files/dirs =="
+          echo "== Top-level after build =="
           ls -la
-          echo "== Any .output? =="
-          find .output -maxdepth 4 2>/dev/null || echo "NO .output"
-          echo "== Any dist? =="
-          find dist -maxdepth 4 2>/dev/null || echo "NO dist"
-          echo "== Any .vinxi? =="
-          find .vinxi -maxdepth 4 2>/dev/null || echo "NO .vinxi"
-          echo "== All HTML/MJS files (not node_modules) =="
-          find . -not -path "*/node_modules/*" -not -path "*/.git/*" \( -name "*.html" -o -name "*.mjs" -o -name "_worker.js" \) 2>/dev/null
+          echo ""
+          echo "== Key files =="
+          find . -not -path "*/node_modules/*" -not -path "*/.git/*" \
+            \( -name "*.html" -o -name "*.mjs" -o -name "_worker.js" -o -name "index.js" \) \
+            2>/dev/null | sort
+          echo ""
+          # Determine deploy dir
+          if [ -f ".output/public/_worker.js" ]; then
+            echo "MODE=pages" >> $GITHUB_OUTPUT
+            echo "DEPLOY_DIR=.output/public" >> $GITHUB_OUTPUT
+            echo "✅ cloudflare-pages mode: .output/public/_worker.js found"
+          elif [ -f ".output/server/index.mjs" ]; then
+            echo "MODE=workers" >> $GITHUB_OUTPUT
+            echo "✅ cloudflare-workers mode: .output/server/index.mjs found"
+          elif [ -d ".output/public" ]; then
+            echo "MODE=pages-static" >> $GITHUB_OUTPUT
+            echo "DEPLOY_DIR=.output/public" >> $GITHUB_OUTPUT
+            echo "⚠️ static-only mode: no _worker.js, deploying static assets"
+          elif [ -d "dist" ]; then
+            echo "MODE=pages-static" >> $GITHUB_OUTPUT
+            echo "DEPLOY_DIR=dist" >> $GITHUB_OUTPUT
+            echo "⚠️ dist mode"
+          else
+            echo "❌ No output found"
+            exit 1
+          fi
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@4
+
+      - name: Deploy (Cloudflare Pages)
+        if: steps.scan.outputs.MODE == 'pages' || steps.scan.outputs.MODE == 'pages-static'
+        run: |
+          wrangler pages deploy "${{ steps.scan.outputs.DEPLOY_DIR }}" \
+            --project-name=leafva-academy --branch=main --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy (Cloudflare Workers)
+        if: steps.scan.outputs.MODE == 'workers'
+        run: wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
