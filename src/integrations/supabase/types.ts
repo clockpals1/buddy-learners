@@ -14,16 +14,227 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      children: {
+        Row: {
+          age: number
+          avatar_key: string
+          created_at: string
+          display_name: string
+          id: string
+          parent_id: string
+          track: Database["public"]["Enums"]["track"]
+          updated_at: string
+        }
+        Insert: {
+          age: number
+          avatar_key?: string
+          created_at?: string
+          display_name: string
+          id?: string
+          parent_id: string
+          track: Database["public"]["Enums"]["track"]
+          updated_at?: string
+        }
+        Update: {
+          age?: number
+          avatar_key?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          parent_id?: string
+          track?: Database["public"]["Enums"]["track"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      consent_records: {
+        Row: {
+          accepted_at: string
+          document_type: string
+          document_version: string
+          id: string
+          ip_address: string | null
+          parent_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          document_type: string
+          document_version: string
+          id?: string
+          ip_address?: string | null
+          parent_id: string
+        }
+        Update: {
+          accepted_at?: string
+          document_type?: string
+          document_version?: string
+          id?: string
+          ip_address?: string | null
+          parent_id?: string
+        }
+        Relationships: []
+      }
+      enrollments: {
+        Row: {
+          child_id: string
+          created_at: string
+          external_subscription_id: string | null
+          id: string
+          parent_id: string
+          payment_provider: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          plan_id: string
+          updated_at: string
+        }
+        Insert: {
+          child_id: string
+          created_at?: string
+          external_subscription_id?: string | null
+          id?: string
+          parent_id: string
+          payment_provider?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          plan_id: string
+          updated_at?: string
+        }
+        Update: {
+          child_id?: string
+          created_at?: string
+          external_subscription_id?: string | null
+          id?: string
+          parent_id?: string
+          payment_provider?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          plan_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["plan_kind"]
+          name: string
+          price_cents: number
+          sibling_discount_pct: number
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          kind: Database["public"]["Enums"]["plan_kind"]
+          name: string
+          price_cents: number
+          sibling_discount_pct?: number
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["plan_kind"]
+          name?: string
+          price_cents?: number
+          sibling_discount_pct?: number
+          slug?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          locale: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          locale?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          locale?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "super_admin" | "instructor" | "support" | "parent"
+      payment_status:
+        | "pending"
+        | "active"
+        | "past_due"
+        | "canceled"
+        | "refunded"
+      plan_kind: "one_time" | "monthly"
+      track: "spark_cubs" | "code_rangers" | "cyber_pioneers"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +361,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["super_admin", "instructor", "support", "parent"],
+      payment_status: ["pending", "active", "past_due", "canceled", "refunded"],
+      plan_kind: ["one_time", "monthly"],
+      track: ["spark_cubs", "code_rangers", "cyber_pioneers"],
+    },
   },
 } as const
