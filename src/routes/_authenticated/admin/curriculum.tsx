@@ -19,6 +19,30 @@ const TRACK_CONFIG = {
   cyber_pioneers: { label: "⚡ Cyber Pioneers", color: "#6366f1", ages: "13–15" },
 } as const;
 
+const LESSON_TYPES = [
+  { value: "video", label: "🎥 Video", icon: "Video" },
+  { value: "game", label: "🎮 Game", icon: "Gamepad2" },
+  { value: "quiz", label: "❓ Quiz", icon: "HelpCircle" },
+  { value: "reading", label: "📖 Reading", icon: "BookOpen" },
+  { value: "project", label: "🛠️ Project", icon: "Wrench" },
+  { value: "live", label: "👥 Live Session", icon: "Users" },
+  { value: "slides", label: "📊 Slides", icon: "Presentation" },
+  { value: "interactive", label: "🖱️ Interactive", icon: "MousePointer2" },
+  { value: "challenge", label: "🏆 Challenge", icon: "Trophy" },
+  { value: "lab", label: "🧪 Lab", icon: "Flask" },
+] as const;
+
+const GAME_PLATFORMS = [
+  { value: "codecombat", label: "CodeCombat", url: "https://codecombat.com" },
+  { value: "scratch", label: "Scratch", url: "https://scratch.mit.edu" },
+  { value: "codeorg", label: "Code.org", url: "https://code.org" },
+  { value: "khan", label: "Khan Academy", url: "https://khanacademy.org" },
+  { value: "freeCodeCamp", label: "freeCodeCamp", url: "https://freecodecamp.org" },
+  { value: "replit", label: "Replit", url: "https://replit.com" },
+  { value: "codewars", label: "Codewars", url: "https://codewars.com" },
+  { value: "custom", label: "Custom/Other", url: "" },
+] as const;
+
 function CurriculumPage() {
   const qc = useQueryClient();
   const [selectedTrack, setSelectedTrack] = useState<Track>("spark_cubs");
@@ -27,7 +51,7 @@ function CurriculumPage() {
   const [showLessonForm, setShowLessonForm] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [courseForm, setCourseForm] = useState({ title: "", description: "", week_number: 1 });
-  const [lessonForm, setLessonForm] = useState({ title: "", type: "video", content_url: "", game_slug: "", duration_minutes: 15 });
+  const [lessonForm, setLessonForm] = useState({ title: "", type: "video", content_url: "", game_slug: "", game_platform: "", duration_minutes: 15 });
 
   const { data: courses, isLoading } = useQuery({
     queryKey: ["courses", selectedTrack],
@@ -82,19 +106,21 @@ function CurriculumPage() {
     mutationFn: async (courseId: string) => {
       const count = lessonsMap?.[courseId]?.length ?? 0;
       await supabase.from("lessons").insert({
-        ...lessonForm,
+        title: lessonForm.title,
+        type: lessonForm.type,
         course_id: courseId,
         order_index: count,
         is_published: false,
         game_slug: lessonForm.game_slug || null,
         content_url: lessonForm.content_url || null,
+        duration_minutes: lessonForm.duration_minutes,
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lessons-map", selectedTrack] });
       toast.success("Lesson created");
       setShowLessonForm(null);
-      setLessonForm({ title: "", type: "video", content_url: "", game_slug: "", duration_minutes: 15 });
+      setLessonForm({ title: "", type: "video", content_url: "", game_slug: "", game_platform: "", duration_minutes: 15 });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -249,15 +275,20 @@ function CurriculumPage() {
                         <div className="grid sm:grid-cols-2 gap-2">
                           <input className={inp} style={inputStyle} placeholder="Lesson title" value={lessonForm.title} onChange={e => setLessonForm(p => ({ ...p, title: e.target.value }))} />
                           <select className={inp} style={inputStyle} value={lessonForm.type} onChange={e => setLessonForm(p => ({ ...p, type: e.target.value }))}>
-                            <option value="video">Video</option>
-                            <option value="game">Game</option>
-                            <option value="quiz">Quiz</option>
-                            <option value="reading">Reading</option>
-                            <option value="project">Project</option>
+                            {LESSON_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
                           <input className={inp} style={inputStyle} placeholder="Content URL (optional)" value={lessonForm.content_url} onChange={e => setLessonForm(p => ({ ...p, content_url: e.target.value }))} />
                           <input type="number" className={inp} style={inputStyle} placeholder="Duration (min)" value={lessonForm.duration_minutes} onChange={e => setLessonForm(p => ({ ...p, duration_minutes: +e.target.value }))} min={5} />
                         </div>
+                        {lessonForm.type === "game" && (
+                          <div className="grid sm:grid-cols-2 gap-2">
+                            <select className={inp} style={inputStyle} value={lessonForm.game_platform} onChange={e => setLessonForm(p => ({ ...p, game_platform: e.target.value }))}>
+                              <option value="">Select platform...</option>
+                              {GAME_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                            </select>
+                            <input className={inp} style={inputStyle} placeholder="Game slug/ID" value={lessonForm.game_slug} onChange={e => setLessonForm(p => ({ ...p, game_slug: e.target.value }))} />
+                          </div>
+                        )}
                         <div className="flex gap-2 justify-end">
                           <button onClick={() => setShowLessonForm(null)} className="h-7 px-3 rounded-lg text-xs" style={{ color: "rgba(226,232,240,0.4)" }}>Cancel</button>
                           <button onClick={() => addLessonMutation.mutate(course.id)} disabled={addLessonMutation.isPending || !lessonForm.title} className="h-7 px-3 rounded-lg text-xs font-semibold disabled:opacity-40" style={{ background: "rgba(99,102,241,0.2)", color: "#818cf8" }}>
