@@ -1,5 +1,38 @@
 -- Add plan feature associations and manual enrollment support
 
+-- Drop and recreate plan_kind enum with correct values
+-- This handles the case where the enum was created with different values previously
+DO $$ BEGIN
+  -- Temporarily drop the default constraint on plans.kind if it exists
+  ALTER TABLE public.plans ALTER COLUMN kind DROP DEFAULT;
+EXCEPTION WHEN undefined_column THEN NULL; END $$;
+
+DO $$ BEGIN
+  -- Update existing plans to use text values temporarily
+  ALTER TABLE public.plans ALTER COLUMN kind TYPE TEXT USING kind::TEXT;
+EXCEPTION WHEN undefined_column THEN NULL; END $$;
+
+DO $$ BEGIN
+  -- Drop the old enum type
+  DROP TYPE IF EXISTS public.plan_kind CASCADE;
+EXCEPTION WHEN undefined_object THEN NULL; END $$;
+
+-- Create the enum with correct values
+CREATE TYPE public.plan_kind AS ENUM ('free', 'family', 'school');
+
+-- Convert kind column back to enum, mapping old values to new ones
+DO $$ BEGIN
+  ALTER TABLE public.plans ALTER COLUMN kind TYPE public.plan_kind USING 
+    CASE 
+      WHEN kind = 'one_time' THEN 'family'::text
+      WHEN kind = 'monthly' THEN 'family'::text
+      ELSE kind
+    END::public.plan_kind;
+EXCEPTION WHEN undefined_column THEN NULL; END $$;
+
+-- Set the default back
+ALTER TABLE public.plans ALTER COLUMN kind SET DEFAULT 'free';
+
 -- Add is_free flag to games (or we can use a separate table for free games)
 -- For now, let's add a column to mark free games in a game_config table
 CREATE TABLE IF NOT EXISTS public.game_config (
