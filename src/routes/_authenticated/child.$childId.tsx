@@ -297,9 +297,13 @@ function GamesTab({ childId, track, meta }: { childId: string; track: string; me
               <p className="font-700 text-base mb-1" style={{ color: "oklch(0.2 0.02 270)" }}>{g.name}</p>
               <p className="text-sm" style={{ color: "oklch(0.55 0.01 270)" }}>{g.desc}</p>
               {!g.soon && !isLocked && (
-                <button className="mt-4 w-full py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80" style={{ background: meta.color, color: "white" }}>
+                <Link
+                  to="/games/pixel-pet-coder"
+                  className="mt-4 w-full py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 flex items-center justify-center"
+                  style={{ background: meta.color, color: "white" }}
+                >
                   Play now
-                </button>
+                </Link>
               )}
               {isLocked && !g.soon && (
                 <Link
