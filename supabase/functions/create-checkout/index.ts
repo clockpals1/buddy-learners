@@ -1,12 +1,6 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Max-Age": "86400",
-};
+import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.39.0/src/util/cors.ts";
 
 async function getSetting(supabase: ReturnType<typeof createClient>, key: string, envFallback?: string): Promise<string | null> {
   const envVal = envFallback ? Deno.env.get(envFallback) : null;
@@ -16,10 +10,10 @@ async function getSetting(supabase: ReturnType<typeof createClient>, key: string
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const json = (body: unknown, status = 200) =>
-    new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+    new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
     const authHeader = req.headers.get("authorization");

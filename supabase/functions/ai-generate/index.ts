@@ -1,11 +1,10 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Max-Age": "86400",
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -28,12 +27,12 @@ function systemPromptForTrack(track: string | null, isGraded: boolean): string {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -43,13 +42,13 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { messages, childId, track, isGraded } = await req.json();
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      return new Response(JSON.stringify({ error: "messages array required" }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "messages array required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Rate limiting: max 20 AI calls per child per hour
@@ -61,7 +60,7 @@ serve(async (req) => {
         .eq("child_id", childId)
         .gte("created_at", oneHourAgo);
       if ((count ?? 0) >= 20) {
-        return new Response(JSON.stringify({ error: "Rate limit reached. Please try again in an hour." }), { status: 429, headers: { ...CORS, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Rate limit reached. Please try again in an hour." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -76,7 +75,7 @@ serve(async (req) => {
       groqKey = setting?.value ?? null;
     }
     if (!groqKey) {
-      return new Response(JSON.stringify({ error: "AI service not configured. A super-admin must add GROQ_API_KEY in Admin → Settings → Integrations." }), { status: 503, headers: { ...CORS, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "AI service not configured. A super-admin must add GROQ_API_KEY in Admin → Settings → Integrations." }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Resolve model: integration_settings override, default to llama-3.3-70b-versatile
@@ -106,7 +105,7 @@ serve(async (req) => {
 
     if (!groqRes.ok) {
       const errText = await groqRes.text();
-      return new Response(JSON.stringify({ error: `Groq error: ${errText}` }), { status: 502, headers: { ...CORS, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: `Groq error: ${errText}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const groqData = await groqRes.json();
@@ -126,14 +125,14 @@ serve(async (req) => {
     }).then(() => {});
 
     if (flagged) {
-      return new Response(JSON.stringify({ error: "Response flagged by content moderation. Please try a different question." }), { status: 422, headers: { ...CORS, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Response flagged by content moderation. Please try a different question." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(
       JSON.stringify({ content: replyText, model, usage: groqData.usage }),
-      { headers: { ...CORS, "Content-Type": "application/json" } },
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
