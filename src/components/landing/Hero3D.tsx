@@ -68,17 +68,18 @@ function PacketNetwork() {
       {edges.map(([a, b], i) => {
         const start = new THREE.Vector3(...nodes[a]);
         const end = new THREE.Vector3(...nodes[b]);
-        const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
+        const mid = start.clone().lerp(end, 0.5);
+        const dir = end.clone().sub(start);
+        const len = dir.length();
+        const quat = new THREE.Quaternion().setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0),
+          dir.clone().normalize(),
+        );
         return (
-          <line key={i}>
-            {/* @ts-expect-error r3f line primitive geometry */}
-            <primitive object={geom} attach="geometry" />
-            <lineBasicMaterial
-              color="#FB7185"
-              transparent
-              opacity={0.35}
-            />
-          </line>
+          <mesh key={i} position={mid} quaternion={quat}>
+            <cylinderGeometry args={[0.008, 0.008, len, 6]} />
+            <meshBasicMaterial color="#FB7185" transparent opacity={0.35} />
+          </mesh>
         );
       })}
     </group>
