@@ -68,9 +68,9 @@ const INTEGRATION_GROUPS: { group: string; color: string; fields: IntegrationFie
     group: "Email (Transactional)",
     color: "#0ea5e9",
     fields: [
-      { key: "EMAIL_PROVIDER", label: "Provider", placeholder: "sendgrid", isSecret: false, description: 'Email provider slug: "sendgrid" or "postmark".' },
-      { key: "EMAIL_API_KEY", label: "API Key", placeholder: "SG.xxx / xxx", isSecret: true, description: "SendGrid or Postmark API key for transactional and reminder emails." },
-      { key: "EMAIL_FROM_ADDRESS", label: "From Address", placeholder: "hello@leafvaacademy.com", isSecret: false, description: "Verified sender email address." },
+      { key: "EMAIL_PROVIDER", label: "Provider", placeholder: "resend", isSecret: false, description: 'Email provider slug: "resend", "sendgrid", or "postmark".' },
+      { key: "RESEND_API_KEY", label: "Resend API Key", placeholder: "re_xxx", isSecret: true, description: "Resend API key from resend.com. Powers transactional emails and AI-generated templates.", docsUrl: "https://resend.com/api-keys" },
+      { key: "EMAIL_FROM_ADDRESS", label: "From Address", placeholder: "support@leafva.ca", isSecret: false, description: "Verified sender email address. Default: support@leafva.ca" },
     ],
   },
   {
