@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useRef, useEffect } from "react";
 import { generateAIResponse, type AIMessage, type Track } from "@/lib/ai-client";
+import type { LucideIcon } from "lucide-react";
 import {
   BookOpen, Gamepad2, Trophy, MessageCircle,
   Send, Loader2, ArrowLeft, Video, ExternalLink, CheckCircle2,
@@ -54,7 +55,7 @@ function ChildPortal() {
 
   const meta = TRACK_META[child.track] ?? TRACK_META.spark_cubs;
 
-  const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+  const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: "lessons", label: "Lessons", icon: BookOpen },
     { id: "games", label: "Games", icon: Gamepad2 },
     { id: "sessions", label: "Live Sessions", icon: Video },

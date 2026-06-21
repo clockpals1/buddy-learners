@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Users, Video, ClipboardList, TrendingUp, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { generateAdminAI } from "@/lib/ai-client";
 
@@ -32,7 +33,7 @@ function useAdminStats() {
   });
 }
 
-function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number | string; color: string }) {
+function StatCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label: string; value: number | string; color: string }) {
   return (
     <div className="rounded-2xl p-5" style={{ background: "oklch(0.18 0.03 270)", border: "1px solid rgba(255,255,255,0.08)" }}>
       <div className="flex items-center justify-between mb-3">
