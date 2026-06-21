@@ -205,40 +205,7 @@ function Portal() {
               {children.map((c) => {
                 const meta = TRACK_META[c.track];
                 return (
-                  <article
-                    key={c.id}
-                    className="relative rounded-2xl bg-card p-5 shadow-soft border border-border/60 overflow-hidden hover:shadow-md transition"
-                  >
-                    <div
-                      className="absolute inset-x-0 top-0 h-1.5"
-                      style={{ background: `var(--${meta.color})` }}
-                    />
-                    <div className="flex items-center gap-3">
-                      <span className="text-4xl">{meta.emoji}</span>
-                      <div>
-                        <h3 className="font-700 text-lg">{c.display_name}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          Age {c.age} · {meta.name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
-                      <Stat icon={<Trophy className="h-4 w-4" />} label="Badges" value="0" />
-                      <Stat icon={<Gamepad2 className="h-4 w-4" />} label="Games" value="0" />
-                      <Stat icon={<Calendar className="h-4 w-4" />} label="Sessions" value="0" />
-                    </div>
-                    <div className="mt-4 flex gap-2">
-                      <Link
-                        to="/child/$childId"
-                        params={{ childId: c.id }}
-                        className="flex-1 h-9 flex items-center justify-center rounded-xl text-sm font-semibold transition hover:opacity-90"
-                        style={{ background: `var(--${meta.color})`, color: "white" }}
-                      >
-                        Start Learning
-                      </Link>
-                      <EnrollButton childId={c.id} />
-                    </div>
-                  </article>
+                  <ChildCard key={c.id} child={c} meta={meta} />
                 );
               })}
             </div>
@@ -251,7 +218,7 @@ function Portal() {
   );
 }
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
   return (
     <div className="rounded-xl bg-muted/60 py-3">
       <div className="flex justify-center text-muted-foreground">{icon}</div>
@@ -261,20 +228,113 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   );
 }
 
-function EnrollButton({ childId }: { childId: string }) {
-  const { data: plans } = useQuery({
-    queryKey: ["plans-active"],
+function ChildCard({ child, meta }: { child: Child; meta: typeof TRACK_META[keyof typeof TRACK_META] }) {
+  const { data: badges } = useQuery({
+    queryKey: ["child-badges", child.id],
     queryFn: async () => {
-      const { data } = await supabase.from("plans").select("id, name, kind").eq("is_active", true).order("price_cents");
-      return data ?? [];
+      const { data } = await supabase
+        .from("child_badges")
+        .select("id")
+        .eq("child_id", child.id);
+      return data?.length ?? 0;
     },
   });
-  const firstPlan = plans?.[0];
-  if (!firstPlan) return null;
+
+  const { data: games } = useQuery({
+    queryKey: ["child-games", child.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("game_progress")
+        .select("id")
+        .eq("user_id", child.id);
+      return data?.length ?? 0;
+    },
+  });
+
+  const { data: sessions } = useQuery({
+    queryKey: ["child-sessions", child.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("session_attendance")
+        .select("id")
+        .eq("child_id", child.id);
+      return data?.length ?? 0;
+    },
+  });
+
+  return (
+    <article className="relative rounded-2xl bg-card p-5 shadow-soft border border-border/60 overflow-hidden hover:shadow-md transition">
+      <div
+        className="absolute inset-x-0 top-0 h-1.5"
+        style={{ background: `var(--${meta.color})` }}
+      />
+      <div className="flex items-center gap-3">
+        <span className="text-4xl">{meta.emoji}</span>
+        <div>
+          <h3 className="font-700 text-lg">{child.display_name}</h3>
+          <p className="text-xs text-muted-foreground">
+            Age {child.age} · {meta.name}
+          </p>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
+        <Stat icon={<Trophy className="h-4 w-4" />} label="Badges" value={badges ?? 0} />
+        <Stat icon={<Gamepad2 className="h-4 w-4" />} label="Games" value={games ?? 0} />
+        <Stat icon={<Calendar className="h-4 w-4" />} label="Sessions" value={sessions ?? 0} />
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Link
+          to="/child/$childId"
+          params={{ childId: child.id }}
+          className="flex-1 h-9 flex items-center justify-center rounded-xl text-sm font-semibold transition hover:opacity-90"
+          style={{ background: `var(--${meta.color})`, color: "white" }}
+        >
+          Start Learning
+        </Link>
+        <EnrollButton childId={child.id} />
+      </div>
+    </article>
+  );
+}
+
+function EnrollButton({ childId }: { childId: string }) {
+  const { data: enrollment } = useQuery({
+    queryKey: ["child-enrollment", childId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("enrollments")
+        .select(`
+          payment_status,
+          plans (
+            id,
+            name,
+            kind
+          )
+        `)
+        .eq("child_id", childId)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  if (enrollment?.payment_status === "active" && enrollment.plans) {
+    const plan = enrollment.plans as any;
+    const planEmoji = plan.kind === "family" ? "👨‍👩‍👧‍👦" : plan.kind === "school" ? "🏫" : "🆓";
+    return (
+      <div
+        className="h-9 px-3 flex items-center rounded-xl text-sm font-medium border border-border bg-muted/50"
+        title={`Enrolled in ${plan.name}`}
+      >
+        <span className="mr-1">{planEmoji}</span>
+        <span className="hidden sm:inline">{plan.name}</span>
+      </div>
+    );
+  }
+
   return (
     <Link
       to="/checkout"
-      search={{ planId: firstPlan.id, childId }}
+      search={{ childId }}
       className="h-9 px-3 flex items-center rounded-xl text-sm font-medium border border-border hover:bg-muted transition"
       title="Enroll in a plan"
     >
