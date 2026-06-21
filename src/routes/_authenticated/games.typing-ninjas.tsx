@@ -56,13 +56,12 @@ function TypingNinjas() {
 
   async function loadProgress() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !childId) return;
+    if (!user) return;
 
     const { data: progress } = await (supabase as any)
       .from("game_progress")
       .select("level, stars")
       .eq("user_id", user.id)
-      .eq("child_id", childId)
       .eq("game_slug", "typing-ninjas");
 
     if (progress) {
@@ -79,18 +78,17 @@ function TypingNinjas() {
 
   async function saveProgress(levelNum: number, starsEarned: number) {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !childId) return;
+    if (!user) return;
 
     await (supabase as any)
       .from("game_progress")
       .upsert({
         user_id: user.id,
-        child_id: childId,
         game_slug: "typing-ninjas",
         level: levelNum,
         stars: starsEarned,
         completed_at: new Date().toISOString(),
-      }, { onConflict: "user_id,child_id,game_slug,level" });
+      }, { onConflict: "user_id,game_slug,level" });
 
     setBestStars(prev => ({ ...prev, [levelNum]: Math.max(prev[levelNum] || 0, starsEarned) }));
     setTotalStars(prev => prev + (starsEarned - (bestStars[levelNum] || 0)));
@@ -102,7 +100,7 @@ function TypingNinjas() {
     const containerWidth = gameRef.current?.clientWidth || 600;
     const keys = currentWorld.keys;
     const char = keys[Math.floor(Math.random() * keys.length)];
-    
+
     const newLetter: FallingLetter = {
       id: Math.random().toString(36).substr(2, 9),
       char: char === " " ? "␣" : char,
@@ -144,6 +142,14 @@ function TypingNinjas() {
     setLives(3);
     setCombo(0);
     setLetters([]);
+    // Add a test letter
+    setLetters([{
+      id: "test",
+      char: "A",
+      x: 200,
+      y: 100,
+      speed: 1,
+    }]);
     spawnTimerRef.current = setTimeout(spawnLetter, 1000);
     gameLoopRef.current = setTimeout(gameLoop, 16);
   }
