@@ -87,17 +87,11 @@ function UsersPage() {
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Delete user's children
-      await supabase.from("children").delete().eq("parent_id", userId);
-      // Delete user's enrollments
-      await supabase.from("enrollments").delete().eq("parent_id", userId);
-      // Delete user's roles
-      await supabase.from("user_roles").delete().eq("user_id", userId);
-      // Delete user's profile
-      await supabase.from("profiles").delete().eq("id", userId);
-      // Delete auth user (requires service role)
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { userId },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });

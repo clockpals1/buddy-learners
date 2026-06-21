@@ -116,19 +116,29 @@ function OnboardingWizard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
       
-      // Add kids to database
+      // Add kids to database and collect their IDs
+      const childIds: string[] = [];
       for (const kid of kids) {
-        await supabase.from("children").insert({
+        const { data: childData, error: childError } = await supabase.from("children").insert({
           parent_id: user.id,
           display_name: kid.name,
           age: parseInt(kid.age),
           track: kid.track as any,
-        });
+        }).select("id").single();
+        
+        if (childError) throw childError;
+        if (childData) childIds.push(childData.id);
       }
       
-      // If plan selected, go to checkout
-      if (selectedPlan && selectedPlan !== "free") {
-        navigate({ to: "/checkout", search: { plan: selectedPlan } });
+      // If plan selected, go to checkout with first child
+      if (selectedPlan && selectedPlan !== "free" && childIds.length > 0) {
+        // Find plan ID from slug
+        const { data: planData } = await supabase.from("plans").select("id").eq("slug", selectedPlan).single();
+        if (planData) {
+          navigate({ to: "/checkout", search: { planId: planData.id, childId: childIds[0] } });
+        } else {
+          throw new Error("Plan not found");
+        }
       } else {
         navigate({ to: "/portal" });
       }
