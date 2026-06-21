@@ -428,7 +428,7 @@ function TypingNinjas() {
             <div
               ref={gameRef}
               className="relative rounded-2xl overflow-hidden"
-              style={{ height: "500px", background: "linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%)", border: "3px solid currentWorld.color" }}
+              style={{ height: "500px", background: "linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%)", border: `3px solid ${currentWorld.color}` }}
             >
               {/* Keyboard hint at bottom */}
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/30 backdrop-blur">
@@ -454,6 +454,7 @@ function TypingNinjas() {
                     top: letter.y,
                     transform: "translateX(-50%)",
                     textShadow: "0 0 20px rgba(139, 92, 246, 0.8)",
+                    zIndex: 10,
                   }}
                 >
                   {letter.char}

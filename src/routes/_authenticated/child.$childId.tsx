@@ -32,11 +32,11 @@ const GAMES = [
   { slug: "ctf-jr", name: "Capture the Flag Jr.", desc: "Sandboxed ethical hacking challenges", emoji: "🚩", tracks: ["cyber_pioneers"], soon: true },
 ];
 
-type Tab = "lessons" | "games" | "badges" | "sessions" | "ai-tutor";
+type Tab = "games" | "lessons" | "badges" | "sessions" | "ai-tutor";
 
 function ChildPortal() {
   const { childId } = Route.useParams();
-  const [tab, setTab] = useState<Tab>("lessons");
+  const [tab, setTab] = useState<Tab>("games");
 
   const { data: child } = useQuery({
     queryKey: ["child", childId],
