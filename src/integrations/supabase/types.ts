@@ -14,6 +14,441 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_request_log: {
+        Row: {
+          child_id: string | null
+          created_at: string
+          flagged: boolean
+          id: string
+          model: string | null
+          tokens_used: number | null
+          user_id: string | null
+        }
+        Insert: {
+          child_id?: string | null
+          created_at?: string
+          flagged?: boolean
+          id?: string
+          model?: string | null
+          tokens_used?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          child_id?: string | null
+          created_at?: string
+          flagged?: boolean
+          id?: string
+          model?: string | null
+          tokens_used?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      assignments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_at: string | null
+          id: string
+          lesson_id: string | null
+          max_score: number
+          rubric: string | null
+          title: string
+          track: Database["public"]["Enums"]["track"] | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          lesson_id?: string | null
+          max_score?: number
+          rubric?: string | null
+          title: string
+          track?: Database["public"]["Enums"]["track"] | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          lesson_id?: string | null
+          max_score?: number
+          rubric?: string | null
+          title?: string
+          track?: Database["public"]["Enums"]["track"] | null
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          meta: Json | null
+          resource: string | null
+          resource_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          resource?: string | null
+          resource_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          resource?: string | null
+          resource_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      badge_defs: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon_emoji: string
+          id: string
+          name: string
+          slug: string
+          track: Database["public"]["Enums"]["track"] | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon_emoji?: string
+          id?: string
+          name: string
+          slug: string
+          track?: Database["public"]["Enums"]["track"] | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon_emoji?: string
+          id?: string
+          name?: string
+          slug?: string
+          track?: Database["public"]["Enums"]["track"] | null
+        }
+        Relationships: []
+      }
+      child_badges: {
+        Row: {
+          badge_slug: string
+          child_id: string
+          earned_at: string
+          id: string
+        }
+        Insert: {
+          badge_slug: string
+          child_id: string
+          earned_at?: string
+          id?: string
+        }
+        Update: {
+          badge_slug?: string
+          child_id?: string
+          earned_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      courses: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_published: boolean
+          order_index: number
+          title: string
+          track: Database["public"]["Enums"]["track"]
+          week_number: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          order_index?: number
+          title: string
+          track: Database["public"]["Enums"]["track"]
+          week_number?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          order_index?: number
+          title?: string
+          track?: Database["public"]["Enums"]["track"]
+          week_number?: number
+        }
+        Relationships: []
+      }
+      integration_settings: {
+        Row: {
+          id: string
+          is_secret: boolean
+          key: string
+          label: string | null
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          id?: string
+          is_secret?: boolean
+          key: string
+          label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          id?: string
+          is_secret?: boolean
+          key?: string
+          label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      lesson_progress: {
+        Row: {
+          child_id: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          lesson_id: string
+          time_spent_seconds: number
+        }
+        Insert: {
+          child_id: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lesson_id: string
+          time_spent_seconds?: number
+        }
+        Update: {
+          child_id?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          time_spent_seconds?: number
+        }
+        Relationships: []
+      }
+      lessons: {
+        Row: {
+          content_url: string | null
+          course_id: string
+          created_at: string
+          duration_minutes: number
+          game_slug: string | null
+          id: string
+          is_published: boolean
+          order_index: number
+          title: string
+          type: string
+        }
+        Insert: {
+          content_url?: string | null
+          course_id: string
+          created_at?: string
+          duration_minutes?: number
+          game_slug?: string | null
+          id?: string
+          is_published?: boolean
+          order_index?: number
+          title: string
+          type?: string
+        }
+        Update: {
+          content_url?: string | null
+          course_id?: string
+          created_at?: string
+          duration_minutes?: number
+          game_slug?: string | null
+          id?: string
+          is_published?: boolean
+          order_index?: number
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      live_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          id: string
+          instructor_id: string | null
+          is_published: boolean
+          max_attendees: number | null
+          meeting_id: string | null
+          meeting_url: string | null
+          notes: string | null
+          provider: Database["public"]["Enums"]["meeting_provider"]
+          scheduled_at: string
+          title: string
+          track: Database["public"]["Enums"]["track"] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          instructor_id?: string | null
+          is_published?: boolean
+          max_attendees?: number | null
+          meeting_id?: string | null
+          meeting_url?: string | null
+          notes?: string | null
+          provider?: Database["public"]["Enums"]["meeting_provider"]
+          scheduled_at: string
+          title: string
+          track?: Database["public"]["Enums"]["track"] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          instructor_id?: string | null
+          is_published?: boolean
+          max_attendees?: number | null
+          meeting_id?: string | null
+          meeting_url?: string | null
+          notes?: string | null
+          provider?: Database["public"]["Enums"]["meeting_provider"]
+          scheduled_at?: string
+          title?: string
+          track?: Database["public"]["Enums"]["track"] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      promo_codes: {
+        Row: {
+          code: string
+          created_at: string
+          discount_pct: number
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          uses: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_pct: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          uses?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_pct?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          uses?: number
+        }
+        Relationships: []
+      }
+      session_attendance: {
+        Row: {
+          child_id: string
+          id: string
+          joined_at: string | null
+          left_at: string | null
+          session_id: string
+        }
+        Insert: {
+          child_id: string
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          session_id: string
+        }
+        Update: {
+          child_id?: string
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          session_id?: string
+        }
+        Relationships: []
+      }
+      submissions: {
+        Row: {
+          ai_draft_feedback: string | null
+          ai_draft_grade: number | null
+          assignment_id: string
+          child_id: string
+          content: string | null
+          feedback: string | null
+          file_url: string | null
+          grade: number | null
+          graded_at: string | null
+          graded_by: string | null
+          id: string
+          submitted_at: string
+        }
+        Insert: {
+          ai_draft_feedback?: string | null
+          ai_draft_grade?: number | null
+          assignment_id: string
+          child_id: string
+          content?: string | null
+          feedback?: string | null
+          file_url?: string | null
+          grade?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          submitted_at?: string
+        }
+        Update: {
+          ai_draft_feedback?: string | null
+          ai_draft_grade?: number | null
+          assignment_id?: string
+          child_id?: string
+          content?: string | null
+          feedback?: string | null
+          file_url?: string | null
+          grade?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          submitted_at?: string
+        }
+        Relationships: []
+      }
       children: {
         Row: {
           age: number
@@ -227,6 +662,7 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin" | "instructor" | "support" | "parent"
+      meeting_provider: "zoom" | "teams" | "google_meet" | "custom"
       payment_status:
         | "pending"
         | "active"

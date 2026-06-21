@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, Plus, Sparkles, Trophy, Gamepad2, Calendar } from "lucide-react";
+import { LogOut, Plus, Sparkles, Trophy, Gamepad2, Calendar, CreditCard, LayoutDashboard, ShieldCheck } from "lucide-react";
 
 type Child = {
   id: string;
@@ -172,6 +173,17 @@ function Portal() {
                       <Stat icon={<Gamepad2 className="h-4 w-4" />} label="Games" value="0" />
                       <Stat icon={<Calendar className="h-4 w-4" />} label="Sessions" value="0" />
                     </div>
+                    <div className="mt-4 flex gap-2">
+                      <Link
+                        to="/child/$childId"
+                        params={{ childId: c.id }}
+                        className="flex-1 h-9 flex items-center justify-center rounded-xl text-sm font-semibold transition hover:opacity-90"
+                        style={{ background: `var(--${meta.color})`, color: "white" }}
+                      >
+                        Open portal
+                      </Link>
+                      <EnrollButton childId={c.id} />
+                    </div>
                   </article>
                 );
               })}
@@ -179,17 +191,7 @@ function Portal() {
           )}
         </section>
 
-        <section className="mt-14 rounded-3xl border border-border bg-card p-8 shadow-soft">
-          <h2 className="text-2xl font-700">Coming next in your portal</h2>
-          <ul className="mt-4 grid sm:grid-cols-2 gap-3 text-sm text-muted-foreground">
-            <li className="flex gap-2"><span>🎮</span> Game catalogue (Pixel Pet Coder, Packet Race, Bug Hunt Squad…)</li>
-            <li className="flex gap-2"><span>🤖</span> AI Teaching Assistant (hints, not answers)</li>
-            <li className="flex gap-2"><span>📅</span> Live session calendar with auto Zoom/Teams links</li>
-            <li className="flex gap-2"><span>🏆</span> Badges, certificates, and Demo Day gallery</li>
-            <li className="flex gap-2"><span>💳</span> Stripe + PayPal checkout for the Camp Pass</li>
-            <li className="flex gap-2"><span>⚙️</span> Admin dashboard for staff</li>
-          </ul>
-        </section>
+        <AdminSection />
       </div>
     </main>
   );
@@ -202,5 +204,59 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
       <p className="mt-1 font-700 text-foreground">{value}</p>
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
+  );
+}
+
+function EnrollButton({ childId }: { childId: string }) {
+  const { data: plans } = useQuery({
+    queryKey: ["plans-active"],
+    queryFn: async () => {
+      const { data } = await supabase.from("plans").select("id, name, kind").eq("is_active", true).order("price_cents");
+      return data ?? [];
+    },
+  });
+  const firstPlan = plans?.[0];
+  if (!firstPlan) return null;
+  return (
+    <Link
+      to="/checkout"
+      search={{ planId: firstPlan.id, childId }}
+      className="h-9 px-3 flex items-center rounded-xl text-sm font-medium border border-border hover:bg-muted transition"
+      title="Enroll in a plan"
+    >
+      <CreditCard className="h-4 w-4" />
+    </Link>
+  );
+}
+
+function AdminSection() {
+  const { data: role } = useQuery({
+    queryKey: ["my-role"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+      return data?.role ?? null;
+    },
+  });
+
+  const isAdmin = role === "super_admin" || role === "instructor";
+  if (!isAdmin) return null;
+
+  return (
+    <section className="mt-10 rounded-3xl border border-border bg-card p-6 shadow-soft">
+      <div className="flex items-center gap-3 mb-3">
+        <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+        <h2 className="text-lg font-700">Staff access</h2>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">You have {role === "super_admin" ? "super admin" : "instructor"} access to the admin dashboard.</p>
+      <Link
+        to="/admin"
+        className="inline-flex items-center gap-2 h-10 px-5 rounded-xl font-semibold text-sm"
+        style={{ background: "oklch(0.2 0.02 270)", color: "white" }}
+      >
+        <LayoutDashboard className="h-4 w-4" /> Open Admin Dashboard
+      </Link>
+    </section>
   );
 }
