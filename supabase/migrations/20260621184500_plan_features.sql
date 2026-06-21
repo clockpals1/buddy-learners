@@ -134,12 +134,16 @@ ADD COLUMN IF NOT EXISTS upgraded_at TIMESTAMPTZ;
 
 -- Add RLS for game_config
 ALTER TABLE public.game_config ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read game config" ON public.game_config;
 CREATE POLICY "Anyone can read game config" ON public.game_config FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Admins manage game config" ON public.game_config;
 CREATE POLICY "Admins manage game config" ON public.game_config FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'super_admin'));
 
 -- Add RLS for plan_features
 ALTER TABLE public.plan_features ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read plan features" ON public.plan_features;
 CREATE POLICY "Anyone can read plan features" ON public.plan_features FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Admins manage plan features" ON public.plan_features;
 CREATE POLICY "Admins manage plan features" ON public.plan_features FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'super_admin'));
 
 -- Update enrollment RLS to allow admins to update manual enrollments
@@ -160,12 +164,10 @@ CREATE TABLE IF NOT EXISTS public.game_progress (
 
 -- Enable RLS on game_progress
 ALTER TABLE public.game_progress ENABLE ROW LEVEL SECURITY;
-
--- Users can manage their own game progress
+DROP POLICY IF EXISTS "Users manage own game progress" ON public.game_progress;
 CREATE POLICY "Users manage own game progress" ON public.game_progress FOR ALL
   TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
--- Admins can read all game progress
+DROP POLICY IF EXISTS "Admins read all game progress" ON public.game_progress;
 CREATE POLICY "Admins read all game progress" ON public.game_progress FOR SELECT
   TO authenticated USING (
     EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'instructor'))
