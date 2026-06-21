@@ -33,12 +33,16 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           NODE_ENV: production
 
-      - name: Check build output exists
+      - name: Find all build outputs
         run: |
-          echo "=== .output contents ==="
-          ls -la .output/ || echo "WARNING: .output/ not found!"
-          echo "=== .output/public contents ==="
-          ls -la .output/public/ || echo "WARNING: .output/public/ not found!"
+          echo "=== All top-level dirs after build ==="
+          ls -la
+          echo "=== .output tree (if exists) ==="
+          find .output -maxdepth 3 2>/dev/null || echo ".output/ not found"
+          echo "=== dist tree (if exists) ==="
+          find dist -maxdepth 3 2>/dev/null || echo "dist/ not found"
+          echo "=== .vinxi tree (if exists) ==="
+          find .vinxi -maxdepth 3 2>/dev/null || echo ".vinxi/ not found"
 
       - name: Install Wrangler
         run: npm install -g wrangler@latest
