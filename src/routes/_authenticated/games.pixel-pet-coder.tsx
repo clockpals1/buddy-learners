@@ -180,20 +180,21 @@ function PixelPetCoder() {
 
   async function runCode() {
     if (blocks.length === 0 || isRunning || isComplete) return;
-    
+
     setIsRunning(true);
     setTimeLeft(currentLevel.timeLimit);
-    
+
     // Reset pet to starting position
     const startPos = { x: 1, y: 1 };
     setPetPos(startPos);
     setCollected(new Set());
-    
+
     let currentPos = { ...startPos };
-    
+    const localCollected = new Set<string>();
+
     for (const block of blocks) {
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       let newPos = { ...currentPos };
       switch (block.direction) {
         case "up": newPos.y -= 1; break;
@@ -201,16 +202,17 @@ function PixelPetCoder() {
         case "left": newPos.x -= 1; break;
         case "right": newPos.x += 1; break;
       }
-      
+
       // Check wall collision
       if (maze[newPos.y]?.[newPos.x] === false) {
         currentPos = newPos;
         setPetPos(currentPos);
-        
+
         // Check paw print collection
         const printIndex = pawPrints.findIndex(p => p.x === currentPos.x && p.y === currentPos.y);
-        if (printIndex !== -1 && !collected.has(`${currentPos.x},${currentPos.y}`)) {
-          setCollected(prev => new Set(prev).add(`${currentPos.x},${currentPos.y}`));
+        if (printIndex !== -1 && !localCollected.has(`${currentPos.x},${currentPos.y}`)) {
+          localCollected.add(`${currentPos.x},${currentPos.y}`);
+          setCollected(new Set(localCollected));
           setShowBounce(true);
           setTimeout(() => setShowBounce(false), 300);
         }
@@ -221,7 +223,7 @@ function PixelPetCoder() {
         break;
       }
     }
-    
+
     setIsRunning(false);
   }
 
