@@ -33,6 +33,10 @@ DO $$ BEGIN
   CREATE TYPE public.meeting_provider AS ENUM ('zoom', 'teams', 'meet', 'other');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE public.plan_kind AS ENUM ('free', 'family', 'school');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- ── Utility: updated_at trigger ──────────────────────────────
 CREATE OR REPLACE FUNCTION public.touch_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -104,10 +108,13 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 -- ── Plans ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  price_usd NUMERIC(10,2) NOT NULL DEFAULT 0,
-  interval TEXT NOT NULL DEFAULT 'month',
-  features JSONB,
+  kind public.plan_kind NOT NULL DEFAULT 'free',
+  price_cents INTEGER NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'usd',
+  description TEXT,
+  sibling_discount_pct INTEGER NOT NULL DEFAULT 0,
   stripe_price_id TEXT,
   paypal_plan_id TEXT,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -120,11 +127,12 @@ CREATE POLICY "Admins manage plans" ON public.plans FOR ALL TO authenticated
 GRANT SELECT ON public.plans TO anon, authenticated;
 GRANT ALL ON public.plans TO service_role;
 
--- Insert default plans
-INSERT INTO public.plans (name, price_usd, interval, features) VALUES
-  ('Free', 0, 'month', '["1 child","Basic lessons","Community access"]'),
-  ('Family', 19.99, 'month', '["Up to 3 children","All lessons","Live sessions","AI tutor","Priority support"]'),
-  ('School', 49.99, 'month', '["Up to 10 children","All features","Admin dashboard","Custom curriculum","Dedicated support"]');
+-- Insert default plans (skip if already exist)
+INSERT INTO public.plans (slug, name, kind, price_cents, description) VALUES
+  ('free',   'Free',   'free',   0,    '1 child · Basic lessons · Community access'),
+  ('family', 'Family', 'family', 1999, 'Up to 3 children · All lessons · Live sessions · AI tutor'),
+  ('school', 'School', 'school', 4999, 'Up to 10 children · All features · Admin dashboard')
+ON CONFLICT (slug) DO NOTHING;
 
 -- ── Children ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.children (
