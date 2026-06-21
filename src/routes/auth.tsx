@@ -78,19 +78,6 @@ function AuthPage() {
     }
   }
 
-  async function handleGoogle() {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/portal` },
-      });
-      if (error) toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   if (emailSent) {
     return (
       <main className="min-h-dvh flex items-center justify-center p-6">
@@ -148,16 +135,8 @@ function AuthPage() {
               : "Sign in to manage your kids' progress."}
           </p>
 
-          <button
-            onClick={handleGoogle}
-            disabled={loading}
-            className="mt-8 w-full h-12 inline-flex items-center justify-center gap-3 rounded-full border border-border bg-card hover:bg-muted transition font-medium disabled:opacity-60"
-          >
-            <GoogleIcon /> Continue with Google
-          </button>
-
           <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wider text-muted-foreground">
-            <span className="h-px flex-1 bg-border" /> or email <span className="h-px flex-1 bg-border" />
+            <span className="h-px flex-1 bg-border" /> Sign in with email <span className="h-px flex-1 bg-border" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
