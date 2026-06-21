@@ -1,7 +1,12 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature" };
+const CORS = { 
+  "Access-Control-Allow-Origin": "*", 
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
+};
 
 async function getSetting(supabase: ReturnType<typeof createClient>, key: string): Promise<string | null> {
   const envVal = Deno.env.get(key);
