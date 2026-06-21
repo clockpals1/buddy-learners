@@ -56,12 +56,13 @@ function TypingNinjas() {
 
   async function loadProgress() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user || !childId) return;
 
     const { data: progress } = await (supabase as any)
       .from("game_progress")
       .select("level, stars")
       .eq("user_id", user.id)
+      .eq("child_id", childId)
       .eq("game_slug", "typing-ninjas");
 
     if (progress) {
@@ -78,17 +79,18 @@ function TypingNinjas() {
 
   async function saveProgress(levelNum: number, starsEarned: number) {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user || !childId) return;
 
     await (supabase as any)
       .from("game_progress")
       .upsert({
         user_id: user.id,
+        child_id: childId,
         game_slug: "typing-ninjas",
         level: levelNum,
         stars: starsEarned,
         completed_at: new Date().toISOString(),
-      }, { onConflict: "user_id,game_slug,level" });
+      }, { onConflict: "user_id,child_id,game_slug,level" });
 
     setBestStars(prev => ({ ...prev, [levelNum]: Math.max(prev[levelNum] || 0, starsEarned) }));
     setTotalStars(prev => prev + (starsEarned - (bestStars[levelNum] || 0)));
@@ -142,14 +144,6 @@ function TypingNinjas() {
     setLives(3);
     setCombo(0);
     setLetters([]);
-    // Add a test letter
-    setLetters([{
-      id: "test",
-      char: "A",
-      x: 200,
-      y: 100,
-      speed: 1,
-    }]);
     spawnTimerRef.current = setTimeout(spawnLetter, 1000);
     gameLoopRef.current = setTimeout(gameLoop, 16);
   }
@@ -436,6 +430,11 @@ function TypingNinjas() {
               className="relative rounded-2xl overflow-hidden"
               style={{ height: "500px", background: "linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%)", border: `3px solid ${currentWorld.color}` }}
             >
+              {/* Debug info */}
+              <div className="absolute top-2 left-2 text-white text-xs bg-black/50 px-2 py-1 rounded">
+                Letters: {letters.length} | Playing: {isPlaying ? "Yes" : "No"} | Paused: {isPaused ? "Yes" : "No"}
+              </div>
+
               {/* Keyboard hint at bottom */}
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/30 backdrop-blur">
                 <div className="flex justify-center gap-2">
