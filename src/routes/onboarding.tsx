@@ -132,14 +132,14 @@ function OnboardingWizard() {
   };
   
   return (
-    <div className="min-h-dvh bg-gradient-to-br from-indigo-50 via-white to-coral-50 flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-gradient-sunrise flex items-center justify-center p-4">
       <div className="w-full max-w-4xl">
         {/* Help button */}
         <button
           onClick={() => setShowTutorial(true)}
-          className="absolute top-4 right-4 p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition"
+          className="absolute top-4 right-4 p-3 bg-white/20 backdrop-blur rounded-full shadow-lg hover:shadow-xl transition"
         >
-          <HelpCircle className="h-6 w-6 text-indigo-500" />
+          <HelpCircle className="h-6 w-6 text-white" />
         </button>
 
         {/* Tutorial modal */}
@@ -152,20 +152,20 @@ function OnboardingWizard() {
               <div key={s} className="flex items-center">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
                   i <= currentStepIndex 
-                    ? "bg-gradient-to-r from-indigo-500 to-coral-500 text-white" 
-                    : "bg-gray-200 text-gray-400"
+                    ? "bg-white text-coral" 
+                    : "bg-white/20 text-white/60"
                 }`}>
                   {i < currentStepIndex ? <Check className="h-5 w-5" /> : i + 1}
                 </div>
                 {i < steps.length - 1 && (
                   <div className={`w-16 h-1 mx-2 transition ${
-                    i < currentStepIndex ? "bg-gradient-to-r from-indigo-500 to-coral-500" : "bg-gray-200"
+                    i < currentStepIndex ? "bg-white" : "bg-white/20"
                   }`} />
                 )}
               </div>
             ))}
           </div>
-          <div className="flex justify-between text-sm text-gray-500">
+          <div className="flex justify-between text-sm text-white/70">
             <span>Welcome</span>
             <span>Account</span>
             <span>Kids</span>
@@ -184,21 +184,21 @@ function OnboardingWizard() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.3 }}
-              className="bg-white rounded-3xl shadow-2xl p-8 md:p-12"
+              className="bg-white/10 backdrop-blur rounded-3xl shadow-2xl p-8 md:p-12 text-white"
             >
               <div className="text-center">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.2, type: "spring" }}
-                  className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-indigo-500 to-coral-500 rounded-full flex items-center justify-center"
+                  className="w-24 h-24 mx-auto mb-6 bg-white/20 backdrop-blur rounded-full flex items-center justify-center"
                 >
                   <Sparkles className="h-12 w-12 text-white" />
                 </motion.div>
-                <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-coral-600 bg-clip-text text-transparent">
+                <h1 className="text-4xl md:text-5xl font-700 mb-4">
                   Welcome to Leafva Academy
                 </h1>
-                <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                <p className="text-xl text-white/85 mb-8 max-w-2xl mx-auto">
                   Where curious kids become code-savvy creators through games, AI tutors, and live mentor sessions.
                 </p>
                 
@@ -213,18 +213,18 @@ function OnboardingWizard() {
                       initial={{ y: 20, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       transition={{ delay: 0.3 + i * 0.1 }}
-                      className="p-4 rounded-xl bg-gray-50"
+                      className="p-4 rounded-xl bg-white/10 backdrop-blur"
                     >
-                      <item.icon className="h-8 w-8 text-indigo-500 mx-auto mb-2" />
+                      <item.icon className="h-8 w-8 text-coral mx-auto mb-2" />
                       <h3 className="font-semibold">{item.title}</h3>
-                      <p className="text-sm text-gray-500">{item.desc}</p>
+                      <p className="text-sm text-white/70">{item.desc}</p>
                     </motion.div>
                   ))}
                 </div>
                 
                 <button
                   onClick={() => setStep("signup")}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-500 to-coral-500 text-white rounded-full font-semibold text-lg hover:shadow-lg transition"
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-white text-coral rounded-full font-semibold text-lg shadow-pop hover:scale-[1.02] transition"
                 >
                   Get Started
                   <ArrowRight className="h-5 w-5" />
@@ -241,23 +241,23 @@ function OnboardingWizard() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.3 }}
-              className="bg-white rounded-3xl shadow-2xl p-8 md:p-12"
+              className="bg-white/10 backdrop-blur rounded-3xl shadow-2xl p-8 md:p-12 text-white"
             >
               <div className="max-w-md mx-auto">
-                <h2 className="text-3xl font-bold mb-2">Create your account</h2>
-                <p className="text-gray-600 mb-8">Enter your details to get started</p>
+                <h2 className="text-3xl font-700 mb-2">Create your account</h2>
+                <p className="text-white/70 mb-8">Enter your details to get started</p>
                 
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Full Name</label>
                     <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/50" />
                       <input
                         type="text"
                         placeholder="John Doe"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-coral text-white placeholder-white/50"
                       />
                     </div>
                   </div>
@@ -265,13 +265,13 @@ function OnboardingWizard() {
                   <div>
                     <label className="block text-sm font-medium mb-2">Email</label>
                     <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/50" />
                       <input
                         type="email"
                         placeholder="john@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-coral text-white placeholder-white/50"
                       />
                     </div>
                   </div>
@@ -279,29 +279,29 @@ function OnboardingWizard() {
                   <div>
                     <label className="block text-sm font-medium mb-2">Password</label>
                     <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/50" />
                       <input
                         type="password"
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         minLength={8}
-                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-coral text-white placeholder-white/50"
                       />
                     </div>
                   </div>
                   
-                  <label className="flex items-start gap-3 text-sm text-gray-600">
+                  <label className="flex items-start gap-3 text-sm text-white/70">
                     <input
                       type="checkbox"
                       checked={agreed}
                       onChange={(e) => setAgreed(e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-500"
+                      className="mt-1 h-4 w-4 rounded border-white/30 accent-coral"
                     />
                     <span>
                       I am the parent or legal guardian and agree to the{" "}
-                      <a href="/terms" className="text-indigo-500 hover:underline">Terms</a> and{" "}
-                      <a href="/privacy" className="text-indigo-500 hover:underline">Privacy Policy</a>
+                      <a href="/terms" className="text-coral hover:underline">Terms</a> and{" "}
+                      <a href="/privacy" className="text-coral hover:underline">Privacy Policy</a>
                     </span>
                   </label>
                 </div>
@@ -309,7 +309,7 @@ function OnboardingWizard() {
                 <div className="flex gap-4 mt-8">
                   <button
                     onClick={() => setStep("welcome")}
-                    className="flex-1 py-3 rounded-xl border border-gray-200 font-semibold hover:bg-gray-50 transition"
+                    className="flex-1 py-3 rounded-xl border border-white/20 font-semibold hover:bg-white/10 transition"
                   >
                     <ArrowLeft className="h-5 w-5 inline mr-2" />
                     Back
@@ -317,7 +317,7 @@ function OnboardingWizard() {
                   <button
                     onClick={handleSignup}
                     disabled={loading}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-coral-500 text-white font-semibold hover:shadow-lg transition disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl bg-white text-coral font-semibold shadow-pop hover:scale-[1.02] transition disabled:opacity-50"
                   >
                     {loading ? "Creating..." : "Continue"}
                     <ArrowRight className="h-5 w-5 inline ml-2" />
@@ -335,24 +335,24 @@ function OnboardingWizard() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.3 }}
-              className="bg-white rounded-3xl shadow-2xl p-8 md:p-12"
+              className="bg-white/10 backdrop-blur rounded-3xl shadow-2xl p-8 md:p-12 text-white"
             >
               <div className="max-w-2xl mx-auto">
-                <h2 className="text-3xl font-bold mb-2">Add your children</h2>
-                <p className="text-gray-600 mb-8">Tell us about your kids so we can personalize their learning</p>
+                <h2 className="text-3xl font-700 mb-2">Add your children</h2>
+                <p className="text-white/70 mb-8">Tell us about your kids so we can personalize their learning</p>
                 
                 {/* Added kids list */}
                 {kids.length > 0 && (
                   <div className="mb-6 space-y-3">
                     {kids.map((kid, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div key={i} className="flex items-center justify-between p-4 bg-white/10 backdrop-blur rounded-xl">
                         <div>
                           <p className="font-semibold">{kid.name}</p>
-                          <p className="text-sm text-gray-500">Age {kid.age} · {kid.track}</p>
+                          <p className="text-sm text-white/60">Age {kid.age} · {kid.track}</p>
                         </div>
                         <button
                           onClick={() => removeKid(i)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                          className="p-2 text-coral hover:bg-white/10 rounded-lg transition"
                         >
                           <X className="h-5 w-5" />
                         </button>
@@ -362,7 +362,7 @@ function OnboardingWizard() {
                 )}
                 
                 {/* Add kid form */}
-                <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                <div className="bg-white/10 backdrop-blur rounded-xl p-6 mb-6">
                   <h3 className="font-semibold mb-4">Add a child</h3>
                   <div className="grid md:grid-cols-3 gap-4">
                     <input
@@ -370,7 +370,7 @@ function OnboardingWizard() {
                       placeholder="Child's name"
                       value={currentKid.name}
                       onChange={(e) => setCurrentKid({ ...currentKid, name: e.target.value })}
-                      className="px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-4 py-3 rounded-xl border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-coral text-white placeholder-white/50"
                     />
                     <input
                       type="number"
@@ -379,12 +379,12 @@ function OnboardingWizard() {
                       onChange={(e) => setCurrentKid({ ...currentKid, age: e.target.value })}
                       min={6}
                       max={15}
-                      className="px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-4 py-3 rounded-xl border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-coral text-white placeholder-white/50"
                     />
                     <select
                       value={currentKid.track}
                       onChange={(e) => setCurrentKid({ ...currentKid, track: e.target.value })}
-                      className="px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-4 py-3 rounded-xl border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-coral text-white"
                     >
                       <option value="explorers">Explorers (6-9)</option>
                       <option value="juniors">Juniors (10-12)</option>
@@ -393,7 +393,7 @@ function OnboardingWizard() {
                   </div>
                   <button
                     onClick={addKid}
-                    className="mt-4 w-full py-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-semibold hover:border-indigo-500 hover:text-indigo-500 transition"
+                    className="mt-4 w-full py-3 rounded-xl border-2 border-dashed border-white/30 text-white/70 font-semibold hover:border-coral hover:text-coral transition"
                   >
                     <UserPlus className="h-5 w-5 inline mr-2" />
                     Add Child
@@ -403,7 +403,7 @@ function OnboardingWizard() {
                 <div className="flex gap-4">
                   <button
                     onClick={() => setStep("signup")}
-                    className="flex-1 py-3 rounded-xl border border-gray-200 font-semibold hover:bg-gray-50 transition"
+                    className="flex-1 py-3 rounded-xl border border-white/20 font-semibold hover:bg-white/10 transition"
                   >
                     <ArrowLeft className="h-5 w-5 inline mr-2" />
                     Back
@@ -411,7 +411,7 @@ function OnboardingWizard() {
                   <button
                     onClick={() => setStep("select-plan")}
                     disabled={kids.length === 0}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-coral-500 text-white font-semibold hover:shadow-lg transition disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl bg-white text-coral font-semibold shadow-pop hover:scale-[1.02] transition disabled:opacity-50"
                   >
                     Continue
                     <ArrowRight className="h-5 w-5 inline ml-2" />
@@ -429,11 +429,11 @@ function OnboardingWizard() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.3 }}
-              className="bg-white rounded-3xl shadow-2xl p-8 md:p-12"
+              className="bg-white/10 backdrop-blur rounded-3xl shadow-2xl p-8 md:p-12 text-white"
             >
               <div className="max-w-4xl mx-auto">
-                <h2 className="text-3xl font-bold mb-2">Choose your plan</h2>
-                <p className="text-gray-600 mb-8">Select the best plan for your family</p>
+                <h2 className="text-3xl font-700 mb-2">Choose your plan</h2>
+                <p className="text-white/70 mb-8">Select the best plan for your family</p>
                 
                 <div className="grid md:grid-cols-3 gap-6 mb-8">
                   {plans.map((plan) => {
@@ -445,25 +445,25 @@ function OnboardingWizard() {
                         onClick={() => setSelectedPlan(plan.slug)}
                         className={`relative p-6 rounded-2xl border-2 cursor-pointer transition ${
                           isSelected 
-                            ? "border-indigo-500 bg-indigo-50" 
+                            ? "border-coral bg-white/20" 
                             : isHighlighted 
-                              ? "border-coral-500 bg-coral-50" 
-                              : "border-gray-200 hover:border-gray-300"
+                              ? "border-white/40 bg-white/10" 
+                              : "border-white/20 bg-white/5 hover:border-white/30"
                         }`}
                       >
                         {isHighlighted && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-coral-500 text-white text-xs font-semibold rounded-full">
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-coral text-white text-xs font-semibold rounded-full">
                             Popular
                           </div>
                         )}
-                        <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
-                        <p className="text-3xl font-bold mb-2">
+                        <h3 className="text-xl font-700 mb-2">{plan.name}</h3>
+                        <p className="text-3xl font-700 mb-2">
                           ${(plan.price_cents / 100).toFixed(0)}
-                          {plan.kind !== "free" && <span className="text-sm font-normal text-gray-500">/month</span>}
+                          {plan.kind !== "free" && <span className="text-sm font-normal text-white/60">/month</span>}
                         </p>
-                        <p className="text-sm text-gray-500 mb-4">{plan.description}</p>
+                        <p className="text-sm text-white/60 mb-4">{plan.description}</p>
                         {isSelected && (
-                          <div className="flex items-center text-indigo-500 font-semibold">
+                          <div className="flex items-center text-coral font-semibold">
                             <Check className="h-5 w-5 mr-2" />
                             Selected
                           </div>
@@ -476,7 +476,7 @@ function OnboardingWizard() {
                 <div className="flex gap-4">
                   <button
                     onClick={() => setStep("add-kids")}
-                    className="flex-1 py-3 rounded-xl border border-gray-200 font-semibold hover:bg-gray-50 transition"
+                    className="flex-1 py-3 rounded-xl border border-white/20 font-semibold hover:bg-white/10 transition"
                   >
                     <ArrowLeft className="h-5 w-5 inline mr-2" />
                     Back
@@ -484,7 +484,7 @@ function OnboardingWizard() {
                   <button
                     onClick={handleComplete}
                     disabled={loading || !selectedPlan}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-coral-500 text-white font-semibold hover:shadow-lg transition disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl bg-white text-coral font-semibold shadow-pop hover:scale-[1.02] transition disabled:opacity-50"
                   >
                     {loading ? "Completing..." : "Complete Setup"}
                     <Check className="h-5 w-5 inline ml-2" />
@@ -502,23 +502,23 @@ function OnboardingWizard() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.3 }}
-              className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 text-center"
+              className="bg-white/10 backdrop-blur rounded-3xl shadow-2xl p-8 md:p-12 text-center text-white"
             >
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring" }}
-                className="w-24 h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center"
+                className="w-24 h-24 mx-auto mb-6 bg-white/20 backdrop-blur rounded-full flex items-center justify-center"
               >
-                <Check className="h-12 w-12 text-green-500" />
+                <Check className="h-12 w-12 text-coral" />
               </motion.div>
-              <h2 className="text-3xl font-bold mb-2">You're all set!</h2>
-              <p className="text-gray-600 mb-8">
+              <h2 className="text-3xl font-700 mb-2">You're all set!</h2>
+              <p className="text-white/70 mb-8">
                 Your account is ready. {kids.length} child{kids.length !== 1 ? "ren have" : " has"} been added.
               </p>
               <button
                 onClick={() => navigate({ to: "/portal" })}
-                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-500 to-coral-500 text-white rounded-full font-semibold text-lg hover:shadow-lg transition"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-coral rounded-full font-semibold text-lg shadow-pop hover:scale-[1.02] transition"
               >
                 Go to Dashboard
                 <ChevronRight className="h-5 w-5" />
