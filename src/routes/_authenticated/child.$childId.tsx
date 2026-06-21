@@ -3,10 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useRef, useEffect } from "react";
 import { generateAIResponse, type AIMessage, type Track } from "@/lib/ai-client";
+import { checkFeatureAccess, checkGameAccess } from "@/lib/plan-auth";
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpen, Gamepad2, Trophy, MessageCircle,
-  Send, Loader2, ArrowLeft, Video, ExternalLink, CheckCircle2,
+  Send, Loader2, ArrowLeft, Video, ExternalLink, CheckCircle2, Lock,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/child/$childId")({
@@ -119,8 +120,8 @@ function ChildPortal() {
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {tab === "lessons" && <LessonsTab childId={childId} track={child.track as Track} meta={meta} />}
-        {tab === "games" && <GamesTab track={child.track} meta={meta} />}
-        {tab === "sessions" && <SessionsTab track={child.track} meta={meta} />}
+        {tab === "games" && <GamesTab childId={childId} track={child.track} meta={meta} />}
+        {tab === "sessions" && <SessionsTab childId={childId} track={child.track} meta={meta} />}
         {tab === "badges" && <BadgesTab childId={childId} track={child.track} meta={meta} />}
         {tab === "ai-tutor" && <AITutorTab childId={childId} track={child.track as Track} name={child.display_name} meta={meta} />}
       </main>
@@ -131,12 +132,18 @@ function ChildPortal() {
 function LessonsTab({ childId, track, meta }: { childId: string; track: Track; meta: typeof TRACK_META[string] }) {
   const qc = useQueryClient();
 
+  const { data: access } = useQuery({
+    queryKey: ["feature-access", childId, "lessons"],
+    queryFn: () => checkFeatureAccess(childId, "lessons"),
+  });
+
   const { data: courses } = useQuery({
     queryKey: ["courses-portal", track],
     queryFn: async () => {
       const { data } = await supabase.from("courses").select("*, lessons(*)").eq("track", track).eq("is_published", true).order("order_index");
       return data ?? [];
     },
+    enabled: access?.hasAccess ?? false,
   });
 
   const { data: progress } = useQuery({
@@ -155,6 +162,32 @@ function LessonsTab({ childId, track, meta }: { childId: string; track: Track; m
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["progress", childId] }),
   });
+
+  if (access === undefined) {
+    return <div className="py-20 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" style={{ color: meta.color }} /></div>;
+  }
+
+  if (!access.hasAccess) {
+    return (
+      <div className="py-20 text-center">
+        <div className="inline-flex h-16 w-16 rounded-full items-center justify-center mb-4" style={{ background: meta.color + "15" }}>
+          <Lock className="h-8 w-8" style={{ color: meta.color }} />
+        </div>
+        <h3 className="text-xl font-700 mb-2" style={{ color: "oklch(0.2 0.02 270)" }}>Upgrade to access lessons</h3>
+        <p className="text-sm mb-6" style={{ color: "oklch(0.55 0.01 270)" }}>
+          Lessons are available with a paid plan. Upgrade your child's enrollment to unlock all learning materials.
+        </p>
+        <Link
+          to="/checkout"
+          search={{ childId }}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition hover:opacity-90"
+          style={{ background: meta.color, color: "white" }}
+        >
+          Upgrade Now
+        </Link>
+      </div>
+    );
+  }
 
   if (!courses?.length) {
     return <div className="py-20 text-center text-sm" style={{ color: "oklch(0.55 0.01 270)" }}>No lessons published yet. Check back soon!</div>;
@@ -227,30 +260,60 @@ function LessonsTab({ childId, track, meta }: { childId: string; track: Track; m
   );
 }
 
-function GamesTab({ track, meta }: { track: string; meta: typeof TRACK_META[string] }) {
+function GamesTab({ childId, track, meta }: { childId: string; track: string; meta: typeof TRACK_META[string] }) {
   const myGames = GAMES.filter(g => g.tracks.includes(track));
+
+  const { data: gamesAccess } = useQuery({
+    queryKey: ["games-access", childId],
+    queryFn: async () => {
+      const accessChecks = await Promise.all(
+        myGames.map(g => checkGameAccess(g.slug, childId))
+      );
+      return Object.fromEntries(myGames.map((g, i) => [g.slug, accessChecks[i]]));
+    },
+  });
 
   return (
     <div className="space-y-4">
       <p className="text-sm font-semibold" style={{ color: "oklch(0.4 0.02 270)" }}>Games for {meta.label}</p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {myGames.map(g => (
-          <div key={g.slug} className="rounded-2xl p-5 bg-white relative overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-            {g.soon && (
-              <div className="absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: meta.color + "20", color: meta.color }}>
-                Coming soon
-              </div>
-            )}
-            <div className="text-4xl mb-3">{g.emoji}</div>
-            <p className="font-700 text-base mb-1" style={{ color: "oklch(0.2 0.02 270)" }}>{g.name}</p>
-            <p className="text-sm" style={{ color: "oklch(0.55 0.01 270)" }}>{g.desc}</p>
-            {!g.soon && (
-              <button className="mt-4 w-full py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80" style={{ background: meta.color, color: "white" }}>
-                Play now
-              </button>
-            )}
-          </div>
-        ))}
+        {myGames.map(g => {
+          const gameAccess = gamesAccess?.[g.slug];
+          const isLocked = !gameAccess?.hasAccess;
+          
+          return (
+            <div key={g.slug} className="rounded-2xl p-5 bg-white relative overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+              {g.soon && (
+                <div className="absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: meta.color + "20", color: meta.color }}>
+                  Coming soon
+                </div>
+              )}
+              {isLocked && !g.soon && (
+                <div className="absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1" style={{ background: "oklch(0.92 0.01 270)", color: "oklch(0.4 0.02 270)" }}>
+                  <Lock className="h-3 w-3" /> Locked
+                </div>
+              )}
+              <div className="text-4xl mb-3">{g.emoji}</div>
+              <p className="font-700 text-base mb-1" style={{ color: "oklch(0.2 0.02 270)" }}>{g.name}</p>
+              <p className="text-sm" style={{ color: "oklch(0.55 0.01 270)" }}>{g.desc}</p>
+              {!g.soon && !isLocked && (
+                <button className="mt-4 w-full py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80" style={{ background: meta.color, color: "white" }}>
+                  Play now
+                </button>
+              )}
+              {isLocked && !g.soon && (
+                <Link
+                  to="/checkout"
+                  search={{ childId }}
+                  className="mt-4 w-full py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 flex items-center justify-center gap-2"
+                  style={{ background: "oklch(0.92 0.01 270)", color: "oklch(0.4 0.02 270)" }}
+                >
+                  <Lock className="h-3.5 w-3.5" /> Unlock
+                </Link>
+              )}
+            </div>
+          );
+        })}
         {myGames.length === 0 && (
           <div className="col-span-3 py-12 text-center text-sm" style={{ color: "oklch(0.6 0.01 270)" }}>No games yet for your track.</div>
         )}
@@ -259,7 +322,12 @@ function GamesTab({ track, meta }: { track: string; meta: typeof TRACK_META[stri
   );
 }
 
-function SessionsTab({ track, meta }: { track: string; meta: typeof TRACK_META[string] }) {
+function SessionsTab({ childId, track, meta }: { childId: string; track: string; meta: typeof TRACK_META[string] }) {
+  const { data: access } = useQuery({
+    queryKey: ["feature-access", childId, "live_sessions"],
+    queryFn: () => checkFeatureAccess(childId, "live_sessions"),
+  });
+
   const { data: sessions } = useQuery({
     queryKey: ["sessions-portal", track],
     queryFn: async () => {
@@ -273,7 +341,34 @@ function SessionsTab({ track, meta }: { track: string; meta: typeof TRACK_META[s
         .limit(10);
       return data ?? [];
     },
+    enabled: access?.hasAccess ?? false,
   });
+
+  if (access === undefined) {
+    return <div className="py-20 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" style={{ color: meta.color }} /></div>;
+  }
+
+  if (!access.hasAccess) {
+    return (
+      <div className="py-20 text-center">
+        <div className="inline-flex h-16 w-16 rounded-full items-center justify-center mb-4" style={{ background: meta.color + "15" }}>
+          <Lock className="h-8 w-8" style={{ color: meta.color }} />
+        </div>
+        <h3 className="text-xl font-700 mb-2" style={{ color: "oklch(0.2 0.02 270)" }}>Upgrade to access live sessions</h3>
+        <p className="text-sm mb-6" style={{ color: "oklch(0.55 0.01 270)" }}>
+          Live sessions are available with a paid plan. Upgrade your child's enrollment to join interactive classes.
+        </p>
+        <Link
+          to="/checkout"
+          search={{ childId }}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition hover:opacity-90"
+          style={{ background: meta.color, color: "white" }}
+        >
+          Upgrade Now
+        </Link>
+      </div>
+    );
+  }
 
   if (!sessions?.length) {
     return <div className="py-20 text-center text-sm" style={{ color: "oklch(0.55 0.01 270)" }}>No upcoming sessions yet. Check back soon!</div>;
@@ -372,6 +467,11 @@ function AITutorTab({ childId, track, name, meta }: { childId: string; track: Tr
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const { data: access } = useQuery({
+    queryKey: ["feature-access", childId, "ai_tutor"],
+    queryFn: () => checkFeatureAccess(childId, "ai_tutor"),
+  });
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -381,6 +481,32 @@ function AITutorTab({ childId, track, name, meta }: { childId: string; track: Tr
     code_rangers: `Hey ${name}! I'm Ranger, your coding guide 🛡️ Ready to level up? Ask me anything!`,
     cyber_pioneers: `What's up ${name}? I'm Pioneer ⚡ — your AI mentor for all things code, AI, and cyber. What do you need?`,
   }[track] ?? `Hi ${name}! I'm your AI tutor. What do you want to learn?`;
+
+  if (access === undefined) {
+    return <div className="py-20 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" style={{ color: meta.color }} /></div>;
+  }
+
+  if (!access.hasAccess) {
+    return (
+      <div className="py-20 text-center">
+        <div className="inline-flex h-16 w-16 rounded-full items-center justify-center mb-4" style={{ background: meta.color + "15" }}>
+          <Lock className="h-8 w-8" style={{ color: meta.color }} />
+        </div>
+        <h3 className="text-xl font-700 mb-2" style={{ color: "oklch(0.2 0.02 270)" }}>Upgrade to access AI Tutor</h3>
+        <p className="text-sm mb-6" style={{ color: "oklch(0.55 0.01 270)" }}>
+          The AI Tutor is available with a paid plan. Upgrade your child's enrollment to get personalized learning assistance.
+        </p>
+        <Link
+          to="/checkout"
+          search={{ childId }}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition hover:opacity-90"
+          style={{ background: meta.color, color: "white" }}
+        >
+          Upgrade Now
+        </Link>
+      </div>
+    );
+  }
 
   async function send() {
     if (!input.trim() || loading) return;

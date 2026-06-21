@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Eye, EyeOff, Save, CheckCircle2, XCircle, Info, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Save, CheckCircle2, XCircle, Info, Loader2, UserPlus, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   head: () => ({ meta: [{ title: "Settings · Leafva Admin" }] }),
@@ -163,6 +164,144 @@ function FieldRow({ field, saved, onSave }: { field: IntegrationField; saved: bo
   );
 }
 
+function ManualUpgrade() {
+  const qc = useQueryClient();
+  const [selectedChild, setSelectedChild] = useState<string>("");
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
+
+  const { data: children } = useQuery({
+    queryKey: ["all-children"],
+    queryFn: async () => {
+      const { data } = await supabase.from("children").select("id, display_name, parent_id").order("created_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const { data: plans } = useQuery({
+    queryKey: ["plans"],
+    queryFn: async () => {
+      const { data } = await supabase.from("plans").select("*").eq("is_active", true);
+      return data ?? [];
+    },
+  });
+
+  const upgradeMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedChild || !selectedPlan) return;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Check if child already has an active enrollment
+      const { data: existing } = await supabase
+        .from("enrollments")
+        .select("*")
+        .eq("child_id", selectedChild)
+        .eq("payment_status", "active")
+        .maybeSingle();
+
+      if (existing) {
+        // Update existing enrollment
+        const { error } = await supabase
+          .from("enrollments")
+          .update({
+            plan_id: selectedPlan,
+            is_manual: true as any,
+            upgraded_by: user.id as any,
+            upgraded_at: new Date().toISOString() as any,
+          })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        // Create new enrollment
+        const { data: child } = await supabase.from("children").select("parent_id").eq("id", selectedChild).single();
+        if (!child) throw new Error("Child not found");
+
+        const { error } = await supabase.from("enrollments").insert({
+          child_id: selectedChild,
+          parent_id: child.parent_id,
+          plan_id: selectedPlan,
+          payment_status: "active",
+          is_manual: true as any,
+          upgraded_by: user.id as any,
+          upgraded_at: new Date().toISOString() as any,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Child upgraded successfully");
+      setSelectedChild("");
+      setSelectedPlan("");
+      qc.invalidateQueries({ queryKey: ["all-children"] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-3">
+        <UserPlus className="h-4 w-4" style={{ color: "#818cf8" }} />
+        <h2 className="text-base font-semibold" style={{ color: "#f1f5f9" }}>Manual User Upgrade</h2>
+      </div>
+      <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <p className="text-xs mb-4" style={{ color: "rgba(226,232,240,0.5)" }}>
+          Manually upgrade a child to a paid plan without payment processing. This creates a manual enrollment record.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-xs font-medium mb-1.5 block" style={{ color: "#f1f5f9" }}>Select Child</label>
+            <select
+              value={selectedChild}
+              onChange={e => setSelectedChild(e.target.value)}
+              className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#f1f5f9",
+              }}
+            >
+              <option value="">Choose a child...</option>
+              {children?.map(c => (
+                <option key={c.id} value={c.id}>{c.display_name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium mb-1.5 block" style={{ color: "#f1f5f9" }}>Select Plan</label>
+            <select
+              value={selectedPlan}
+              onChange={e => setSelectedPlan(e.target.value)}
+              className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#f1f5f9",
+              }}
+            >
+              <option value="">Choose a plan...</option>
+              {plans?.map(p => (
+                <option key={p.id} value={p.id}>{p.name} (${p.price_cents / 100})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <button
+          onClick={() => upgradeMutation.mutate()}
+          disabled={!selectedChild || !selectedPlan || upgradeMutation.isPending}
+          className="h-9 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 disabled:opacity-40 transition"
+          style={{ background: "rgba(99,102,241,0.2)", color: "#818cf8" }}
+        >
+          {upgradeMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUpRight className="h-3 w-3" />}
+          Upgrade Child
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function IntegrationSettings() {
   const [configured, setConfigured] = useState<Record<string, boolean>>({});
   const [auditLog, setAuditLog] = useState<{ action: string; created_at: string }[]>([]);
@@ -226,6 +365,8 @@ function IntegrationSettings() {
           All values are stored in the database (accessible only to super-admins). Keys take priority from Supabase env vars when set there.
         </p>
       </div>
+
+      <ManualUpgrade />
 
       {INTEGRATION_GROUPS.map(group => (
         <section key={group.group}>
