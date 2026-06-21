@@ -43,9 +43,23 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler@latest
 
-      - name: Publish to Cloudflare Pages
+      - name: Create Cloudflare Pages project (if not exists)
         run: |
-          wrangler pages project create leafva-academy --production-branch=main 2>/dev/null || true
+          echo "Creating project via Cloudflare API..."
+          RESPONSE=$(curl -s -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"leafva-academy","production_branch":"main"}')
+          echo "API Response: $RESPONSE"
+          # Exit 0 whether created or already exists
+          echo $RESPONSE | grep -q '"success":true' && echo "Project created!" || echo "Project may already exist, continuing..."
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy to Cloudflare Pages
+        run: |
           wrangler pages deploy .output/public \
             --project-name=leafva-academy \
             --branch=main \
