@@ -16,6 +16,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [mode, setMode] = useState<"signup" | "signin">("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +24,7 @@ function AuthPage() {
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [selectedPlanSlug, setSelectedPlanSlug] = useState<string | null>(search.plan || null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -69,7 +71,11 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/portal" });
+        if (selectedPlanSlug) {
+          navigate({ to: "/checkout", search: { plan: selectedPlanSlug } });
+        } else {
+          navigate({ to: "/portal" });
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
@@ -134,6 +140,13 @@ function AuthPage() {
               ? "Two minutes. No card needed yet."
               : "Sign in to manage your kids' progress."}
           </p>
+
+          {selectedPlanSlug && (
+            <div className="mt-4 p-3 rounded-lg bg-coral/10 border border-coral/20">
+              <p className="text-sm font-medium text-coral">Selected plan: {selectedPlanSlug}</p>
+              <p className="text-xs text-muted-foreground mt-1">You'll be guided to checkout after sign in</p>
+            </div>
+          )}
 
           <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wider text-muted-foreground">
             <span className="h-px flex-1 bg-border" /> Sign in with email <span className="h-px flex-1 bg-border" />
