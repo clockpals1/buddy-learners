@@ -33,28 +33,10 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           NODE_ENV: production
 
-      - name: Scan dist contents
-        run: |
-          echo "== All files in dist/ =="
-          find dist -type f 2>/dev/null | sort || echo "dist/ not found"
-          echo ""
-          echo "== All files in .output/ =="
-          find .output -type f 2>/dev/null | sort || echo ".output/ not found"
-
       - name: Install Wrangler
         run: npm install -g wrangler@4
 
-      - name: Deploy (Cloudflare Pages)
-        if: steps.scan.outputs.MODE == 'pages' || steps.scan.outputs.MODE == 'pages-static'
-        run: |
-          wrangler pages deploy "${{ steps.scan.outputs.DEPLOY_DIR }}" \
-            --project-name=leafva-academy --branch=main --commit-dirty=true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Deploy (Cloudflare Workers)
-        if: steps.scan.outputs.MODE == 'workers'
+      - name: Deploy to Cloudflare Workers
         run: wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

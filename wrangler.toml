@@ -1,4 +1,7 @@
 name = "leafva-academy"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".output/public"
+main = "dist/server/server.js"
+
+[assets]
+directory = "dist/client"
