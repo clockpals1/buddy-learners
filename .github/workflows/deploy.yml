@@ -33,38 +33,48 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           NODE_ENV: production
 
-      - name: Find all build outputs
+      - name: Find build output directory
+        id: find_output
         run: |
-          echo "=== All top-level dirs after build ==="
+          echo "=== Post-build directory listing ==="
           ls -la
-          echo "=== .output tree (if exists) ==="
-          find .output -maxdepth 3 2>/dev/null || echo ".output/ not found"
-          echo "=== dist tree (if exists) ==="
-          find dist -maxdepth 3 2>/dev/null || echo "dist/ not found"
-          echo "=== .vinxi tree (if exists) ==="
-          find .vinxi -maxdepth 3 2>/dev/null || echo ".vinxi/ not found"
+          echo ""
+          if [ -d ".output/public" ]; then
+            echo "DEPLOY_DIR=.output/public" >> $GITHUB_OUTPUT
+            echo "✅ Found: .output/public"
+            find .output/public -maxdepth 2
+          elif [ -d ".output" ]; then
+            echo "DEPLOY_DIR=.output" >> $GITHUB_OUTPUT
+            echo "✅ Found: .output"
+            find .output -maxdepth 2
+          elif [ -d "dist" ]; then
+            echo "DEPLOY_DIR=dist" >> $GITHUB_OUTPUT
+            echo "✅ Found: dist"
+            find dist -maxdepth 2
+          else
+            echo "❌ No build output found - build must have failed silently"
+            exit 1
+          fi
 
       - name: Install Wrangler
         run: npm install -g wrangler@latest
 
       - name: Create Cloudflare Pages project (if not exists)
         run: |
-          echo "Creating project via Cloudflare API..."
           RESPONSE=$(curl -s -X POST \
             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{"name":"leafva-academy","production_branch":"main"}')
-          echo "API Response: $RESPONSE"
-          # Exit 0 whether created or already exists
-          echo $RESPONSE | grep -q '"success":true' && echo "Project created!" || echo "Project may already exist, continuing..."
+          echo "Create project response: $RESPONSE"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy to Cloudflare Pages
         run: |
-          wrangler pages deploy .output/public \
+          echo "Deploying from: ${{ steps.find_output.outputs.DEPLOY_DIR }}"
+          wrangler pages deploy "${{ steps.find_output.outputs.DEPLOY_DIR }}" \
             --project-name=leafva-academy \
             --branch=main \
             --commit-dirty=true
