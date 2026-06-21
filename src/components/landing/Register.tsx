@@ -15,10 +15,10 @@ export default function Register() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
-              to="/auth"
+              to="/onboarding"
               className="inline-flex h-12 items-center gap-2 px-6 rounded-full bg-white text-coral font-semibold shadow-pop hover:scale-[1.03] transition"
             >
-              Create parent account
+              Get Started Free
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
