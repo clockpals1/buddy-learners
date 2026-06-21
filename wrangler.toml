@@ -1,6 +1,7 @@
 name = "leafva-academy"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat"]
+main = ".output/server/index.mjs"
 
-# Cloudflare Pages — points to the Nitro build output
-pages_build_output_dir = ".output/public"
+[assets]
+directory = ".output/public"
