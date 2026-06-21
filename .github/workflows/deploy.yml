@@ -33,37 +33,13 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           NODE_ENV: production
 
-      - name: Scan build output
-        id: scan
+      - name: Scan dist contents
         run: |
-          echo "== Top-level after build =="
-          ls -la
+          echo "== All files in dist/ =="
+          find dist -type f 2>/dev/null | sort || echo "dist/ not found"
           echo ""
-          echo "== Key files =="
-          find . -not -path "*/node_modules/*" -not -path "*/.git/*" \
-            \( -name "*.html" -o -name "*.mjs" -o -name "_worker.js" -o -name "index.js" \) \
-            2>/dev/null | sort
-          echo ""
-          # Determine deploy dir
-          if [ -f ".output/public/_worker.js" ]; then
-            echo "MODE=pages" >> $GITHUB_OUTPUT
-            echo "DEPLOY_DIR=.output/public" >> $GITHUB_OUTPUT
-            echo "✅ cloudflare-pages mode: .output/public/_worker.js found"
-          elif [ -f ".output/server/index.mjs" ]; then
-            echo "MODE=workers" >> $GITHUB_OUTPUT
-            echo "✅ cloudflare-workers mode: .output/server/index.mjs found"
-          elif [ -d ".output/public" ]; then
-            echo "MODE=pages-static" >> $GITHUB_OUTPUT
-            echo "DEPLOY_DIR=.output/public" >> $GITHUB_OUTPUT
-            echo "⚠️ static-only mode: no _worker.js, deploying static assets"
-          elif [ -d "dist" ]; then
-            echo "MODE=pages-static" >> $GITHUB_OUTPUT
-            echo "DEPLOY_DIR=dist" >> $GITHUB_OUTPUT
-            echo "⚠️ dist mode"
-          else
-            echo "❌ No output found"
-            exit 1
-          fi
+          echo "== All files in .output/ =="
+          find .output -type f 2>/dev/null | sort || echo ".output/ not found"
 
       - name: Install Wrangler
         run: npm install -g wrangler@4
