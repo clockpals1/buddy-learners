@@ -1,13 +1,37 @@
 -- ============================================================
--- Leafva Academy – COMPLETE schema (run this on a fresh project)
--- Paste ALL of this into Supabase SQL Editor and click Run
+-- Leafva Academy – COMPLETE schema  (fully idempotent — safe to re-run)
+-- Supabase SQL Editor → paste all → Run
 -- ============================================================
 
--- ── Enums ────────────────────────────────────────────────────
-CREATE TYPE public.app_role AS ENUM ('super_admin', 'instructor', 'parent', 'child');
-CREATE TYPE public.track AS ENUM ('explorers', 'juniors', 'scholars');
-CREATE TYPE public.payment_status AS ENUM ('pending', 'active', 'cancelled', 'refunded', 'failed');
-CREATE TYPE public.meeting_provider AS ENUM ('zoom', 'teams', 'meet', 'other');
+-- Drop all policies first so re-runs don't error
+DO $$ DECLARE r RECORD; BEGIN
+  FOR r IN (SELECT policyname, tablename FROM pg_policies WHERE schemaname = 'public') LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', r.policyname, r.tablename);
+  END LOOP;
+END $$;
+
+-- Drop triggers
+DROP TRIGGER IF EXISTS trg_profiles_updated_at   ON public.profiles;
+DROP TRIGGER IF EXISTS trg_children_updated_at   ON public.children;
+DROP TRIGGER IF EXISTS trg_enrollments_updated_at ON public.enrollments;
+DROP TRIGGER IF EXISTS on_auth_user_created       ON auth.users;
+
+-- ── Enums (idempotent) ───────────────────────────────────────
+DO $$ BEGIN
+  CREATE TYPE public.app_role AS ENUM ('super_admin', 'instructor', 'parent', 'child');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.track AS ENUM ('explorers', 'juniors', 'scholars');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.payment_status AS ENUM ('pending', 'active', 'cancelled', 'refunded', 'failed');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.meeting_provider AS ENUM ('zoom', 'teams', 'meet', 'other');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ── Utility: updated_at trigger ──────────────────────────────
 CREATE OR REPLACE FUNCTION public.touch_updated_at()
@@ -23,7 +47,7 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC, anon;
 
 -- ── Profiles ─────────────────────────────────────────────────
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT,
   avatar_url TEXT,
@@ -39,7 +63,7 @@ CREATE TRIGGER trg_profiles_updated_at BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 
 -- ── User roles ───────────────────────────────────────────────
-CREATE TABLE public.user_roles (
+CREATE TABLE IF NOT EXISTS public.user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   role public.app_role NOT NULL,
@@ -78,7 +102,7 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ── Plans ────────────────────────────────────────────────────
-CREATE TABLE public.plans (
+CREATE TABLE IF NOT EXISTS public.plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   price_usd NUMERIC(10,2) NOT NULL DEFAULT 0,
@@ -103,7 +127,7 @@ INSERT INTO public.plans (name, price_usd, interval, features) VALUES
   ('School', 49.99, 'month', '["Up to 10 children","All features","Admin dashboard","Custom curriculum","Dedicated support"]');
 
 -- ── Children ─────────────────────────────────────────────────
-CREATE TABLE public.children (
+CREATE TABLE IF NOT EXISTS public.children (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -124,7 +148,7 @@ CREATE TRIGGER trg_children_updated_at BEFORE UPDATE ON public.children
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 
 -- ── Consent records ──────────────────────────────────────────
-CREATE TABLE public.consent_records (
+CREATE TABLE IF NOT EXISTS public.consent_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   document_type TEXT NOT NULL,
@@ -138,7 +162,7 @@ GRANT SELECT, INSERT ON public.consent_records TO authenticated;
 GRANT ALL ON public.consent_records TO service_role;
 
 -- ── Enrollments ──────────────────────────────────────────────
-CREATE TABLE public.enrollments (
+CREATE TABLE IF NOT EXISTS public.enrollments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
   plan_id UUID NOT NULL REFERENCES public.plans(id),
@@ -160,7 +184,7 @@ CREATE TRIGGER trg_enrollments_updated_at BEFORE UPDATE ON public.enrollments
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 
 -- ── Promo codes ──────────────────────────────────────────────
-CREATE TABLE public.promo_codes (
+CREATE TABLE IF NOT EXISTS public.promo_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT UNIQUE NOT NULL,
   discount_pct INTEGER NOT NULL DEFAULT 10 CHECK (discount_pct BETWEEN 1 AND 100),
@@ -179,7 +203,7 @@ GRANT SELECT ON public.promo_codes TO authenticated;
 GRANT ALL ON public.promo_codes TO service_role;
 
 -- ── Integration settings ─────────────────────────────────────
-CREATE TABLE public.integration_settings (
+CREATE TABLE IF NOT EXISTS public.integration_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key TEXT UNIQUE NOT NULL,
   value TEXT,
@@ -193,7 +217,7 @@ CREATE POLICY "Admins manage integrations" ON public.integration_settings FOR AL
 GRANT ALL ON public.integration_settings TO service_role;
 
 -- ── Audit log ────────────────────────────────────────────────
-CREATE TABLE public.audit_log (
+CREATE TABLE IF NOT EXISTS public.audit_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_id UUID REFERENCES auth.users(id),
   action TEXT NOT NULL,
@@ -209,7 +233,7 @@ GRANT INSERT ON public.audit_log TO authenticated;
 GRANT ALL ON public.audit_log TO service_role;
 
 -- ── Courses ──────────────────────────────────────────────────
-CREATE TABLE public.courses (
+CREATE TABLE IF NOT EXISTS public.courses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   track public.track NOT NULL,
   title TEXT NOT NULL,
@@ -228,7 +252,7 @@ GRANT SELECT ON public.courses TO anon, authenticated;
 GRANT ALL ON public.courses TO service_role;
 
 -- ── Lessons ──────────────────────────────────────────────────
-CREATE TABLE public.lessons (
+CREATE TABLE IF NOT EXISTS public.lessons (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id UUID NOT NULL REFERENCES public.courses(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -249,7 +273,7 @@ GRANT SELECT ON public.lessons TO anon, authenticated;
 GRANT ALL ON public.lessons TO service_role;
 
 -- ── Lesson progress ──────────────────────────────────────────
-CREATE TABLE public.lesson_progress (
+CREATE TABLE IF NOT EXISTS public.lesson_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
   lesson_id UUID NOT NULL REFERENCES public.lessons(id) ON DELETE CASCADE,
@@ -268,7 +292,7 @@ GRANT SELECT, INSERT, UPDATE ON public.lesson_progress TO authenticated;
 GRANT ALL ON public.lesson_progress TO service_role;
 
 -- ── Badge definitions ────────────────────────────────────────
-CREATE TABLE public.badge_defs (
+CREATE TABLE IF NOT EXISTS public.badge_defs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
@@ -283,7 +307,7 @@ GRANT SELECT ON public.badge_defs TO anon, authenticated;
 GRANT ALL ON public.badge_defs TO service_role;
 
 -- ── Child badges ─────────────────────────────────────────────
-CREATE TABLE public.child_badges (
+CREATE TABLE IF NOT EXISTS public.child_badges (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
   badge_id UUID NOT NULL REFERENCES public.badge_defs(id),
@@ -297,7 +321,7 @@ GRANT SELECT ON public.child_badges TO authenticated;
 GRANT ALL ON public.child_badges TO service_role;
 
 -- ── Live sessions ────────────────────────────────────────────
-CREATE TABLE public.live_sessions (
+CREATE TABLE IF NOT EXISTS public.live_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT,
@@ -321,7 +345,7 @@ GRANT SELECT ON public.live_sessions TO anon, authenticated;
 GRANT ALL ON public.live_sessions TO service_role;
 
 -- ── Session attendance ───────────────────────────────────────
-CREATE TABLE public.session_attendance (
+CREATE TABLE IF NOT EXISTS public.session_attendance (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES public.live_sessions(id) ON DELETE CASCADE,
   child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
@@ -335,7 +359,7 @@ GRANT SELECT, INSERT ON public.session_attendance TO authenticated;
 GRANT ALL ON public.session_attendance TO service_role;
 
 -- ── Assignments ──────────────────────────────────────────────
-CREATE TABLE public.assignments (
+CREATE TABLE IF NOT EXISTS public.assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lesson_id UUID REFERENCES public.lessons(id),
   title TEXT NOT NULL,
@@ -355,7 +379,7 @@ GRANT SELECT ON public.assignments TO authenticated;
 GRANT ALL ON public.assignments TO service_role;
 
 -- ── Submissions ──────────────────────────────────────────────
-CREATE TABLE public.submissions (
+CREATE TABLE IF NOT EXISTS public.submissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assignment_id UUID NOT NULL REFERENCES public.assignments(id) ON DELETE CASCADE,
   child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
@@ -374,7 +398,7 @@ GRANT SELECT, INSERT ON public.submissions TO authenticated;
 GRANT ALL ON public.submissions TO service_role;
 
 -- ── AI request log ───────────────────────────────────────────
-CREATE TABLE public.ai_request_log (
+CREATE TABLE IF NOT EXISTS public.ai_request_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id),
   child_id UUID REFERENCES public.children(id),
