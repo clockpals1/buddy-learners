@@ -36,7 +36,15 @@ function CheckoutPage() {
     queryKey: ["child-checkout", childId],
     queryFn: async () => {
       if (!childId) return null;
-      const { data } = await supabase.from("children").select("*").eq("id", childId).single();
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return null;
+      
+      const { data } = await supabase
+        .from("children")
+        .select("*")
+        .eq("id", childId)
+        .eq("parent_id", userData.user.id)
+        .single();
       return data;
     },
     enabled: !!childId,

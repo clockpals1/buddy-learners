@@ -38,9 +38,17 @@ function Portal() {
   const [age, setAge] = useState<number>(8);
 
   async function load() {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      toast.error("Not authenticated");
+      setLoading(false);
+      return;
+    }
+    
     const { data, error } = await supabase
       .from("children")
       .select("*")
+      .eq("parent_id", userData.user.id)
       .order("created_at", { ascending: true });
     if (error) toast.error(error.message);
     else setChildren((data ?? []) as Child[]);
@@ -94,14 +102,21 @@ function Portal() {
       </header>
 
       <div className="mx-auto max-w-6xl px-6 py-12">
-        <h1 className="text-4xl md:text-5xl font-700 font-display">Your family dashboard</h1>
-        <p className="mt-2 text-muted-foreground">
-          Add a child, pick their track, and we'll handle the rest.
-        </p>
+        <div className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-700 font-display">Welcome to your family dashboard</h1>
+          <p className="mt-3 text-lg text-muted-foreground">
+            Manage your children's learning journey here. Each child has their own personalized learning track.
+          </p>
+        </div>
 
         <section className="mt-10">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-2xl font-700">Children</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-700">Your Children</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add your kids to get them started with coding lessons
+              </p>
+            </div>
             <button
               onClick={() => setAdding((v) => !v)}
               className="inline-flex h-10 items-center gap-2 px-4 rounded-full bg-gradient-cta text-coral-foreground font-semibold shadow-pop hover:scale-[1.03] transition"
@@ -113,38 +128,77 @@ function Portal() {
           {adding && (
             <form
               onSubmit={addChild}
-              className="rounded-2xl border border-border bg-card p-5 shadow-soft grid sm:grid-cols-[1fr_120px_auto] gap-3 mb-6"
+              className="rounded-2xl border border-border bg-card p-6 shadow-soft mb-6"
             >
-              <input
-                required
-                placeholder="Child's name or nickname"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-11 px-4 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <input
-                required
-                type="number"
-                min={6}
-                max={15}
-                value={age}
-                onChange={(e) => setAge(Number(e.target.value))}
-                className="h-11 px-4 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <button
-                type="submit"
-                className="h-11 px-5 rounded-xl bg-ink text-cream font-semibold hover:bg-ink/90 transition"
-              >
-                Save · {TRACK_META[trackForAge(age)].name}
-              </button>
+              <h3 className="text-lg font-700 mb-4">Add a new child</h3>
+              <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Child's name</label>
+                  <input
+                    required
+                    placeholder="e.g., Emma, Alex, Jordan"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full h-11 px-4 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Age (6-15 years)</label>
+                  <input
+                    required
+                    type="number"
+                    min={6}
+                    max={15}
+                    value={age}
+                    onChange={(e) => setAge(Number(e.target.value))}
+                    className="w-full h-11 px-4 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 mb-4">
+                <span className="text-2xl">{TRACK_META[trackForAge(age)].emoji}</span>
+                <div>
+                  <p className="font-semibold text-sm">{TRACK_META[trackForAge(age)].name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {age <= 9 ? "Perfect for beginners ages 6-9" : age <= 12 ? "Great for ages 10-12" : "Advanced learning for ages 13-15"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAdding(false)}
+                  className="flex-1 h-11 px-5 rounded-xl border border-border font-semibold hover:bg-muted transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 h-11 px-5 rounded-xl bg-ink text-cream font-semibold hover:bg-ink/90 transition"
+                >
+                  Add Child
+                </button>
+              </div>
             </form>
           )}
 
           {loading ? (
-            <p className="text-muted-foreground">Loading…</p>
+            <div className="flex items-center justify-center py-12">
+              <p className="text-muted-foreground">Loading your children's profiles…</p>
+            </div>
           ) : children.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">
-              No children yet. Click <strong>Add a child</strong> to get started.
+            <div className="rounded-2xl border border-dashed border-border p-12 text-center">
+              <div className="text-5xl mb-4">👨‍👩‍👧‍👦</div>
+              <h3 className="text-xl font-700 mb-2">No children added yet</h3>
+              <p className="text-muted-foreground mb-6">
+                Add your first child to start their coding adventure!
+              </p>
+              <button
+                onClick={() => setAdding(true)}
+                className="inline-flex h-10 items-center gap-2 px-6 rounded-full bg-gradient-cta text-coral-foreground font-semibold shadow-pop hover:scale-[1.03] transition"
+              >
+                <Plus className="h-4 w-4" /> Add your first child
+              </button>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -153,7 +207,7 @@ function Portal() {
                 return (
                   <article
                     key={c.id}
-                    className="relative rounded-2xl bg-card p-5 shadow-soft border border-border/60 overflow-hidden"
+                    className="relative rounded-2xl bg-card p-5 shadow-soft border border-border/60 overflow-hidden hover:shadow-md transition"
                   >
                     <div
                       className="absolute inset-x-0 top-0 h-1.5"
@@ -180,7 +234,7 @@ function Portal() {
                         className="flex-1 h-9 flex items-center justify-center rounded-xl text-sm font-semibold transition hover:opacity-90"
                         style={{ background: `var(--${meta.color})`, color: "white" }}
                       >
-                        Open portal
+                        Start Learning
                       </Link>
                       <EnrollButton childId={c.id} />
                     </div>

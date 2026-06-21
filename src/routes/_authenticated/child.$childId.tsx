@@ -40,15 +40,34 @@ function ChildPortal() {
   const { data: child } = useQuery({
     queryKey: ["child", childId],
     queryFn: async () => {
-      const { data } = await supabase.from("children").select("*").eq("id", childId).single();
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return null;
+      
+      const { data } = await supabase
+        .from("children")
+        .select("*")
+        .eq("id", childId)
+        .eq("parent_id", userData.user.id)
+        .single();
       return data;
     },
   });
 
   if (!child) {
     return (
-      <div className="flex items-center justify-center min-h-dvh">
-        <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--color-brand-600)" }} />
+      <div className="flex items-center justify-center min-h-dvh px-4">
+        <div className="text-center">
+          <p className="text-lg font-semibold mb-2">Child not found</p>
+          <p className="text-muted-foreground mb-4">
+            This child profile doesn't exist or you don't have access to it.
+          </p>
+          <Link
+            to="/portal"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-cta text-coral-foreground font-semibold"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          </Link>
+        </div>
       </div>
     );
   }
