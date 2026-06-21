@@ -36,8 +36,8 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler@4
 
-      - name: Deploy to Cloudflare Workers
-        run: wrangler deploy
+      - name: Deploy to Cloudflare Pages
+        run: wrangler pages deploy .output/public --project-name=leafva-academy --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
