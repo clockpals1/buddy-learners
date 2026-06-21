@@ -1,9 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -23,6 +22,7 @@ function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -30,13 +30,11 @@ function AuthPage() {
     });
   }, [navigate]);
 
-  async function recordConsents() {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
+  async function recordConsents(userId: string) {
     await supabase.from("consent_records").insert([
-      { parent_id: data.user.id, document_type: "terms", document_version: "v1.0" },
-      { parent_id: data.user.id, document_type: "privacy", document_version: "v1.0" },
-      { parent_id: data.user.id, document_type: "parental_consent", document_version: "v1.0" },
+      { parent_id: userId, document_type: "terms", document_version: "v1.0" },
+      { parent_id: userId, document_type: "privacy", document_version: "v1.0" },
+      { parent_id: userId, document_type: "parental_consent", document_version: "v1.0" },
     ]);
   }
 
@@ -49,7 +47,7 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -58,9 +56,16 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        await recordConsents();
-        toast.success("Account created — welcome!");
-        navigate({ to: "/portal" });
+
+        if (data.session) {
+          // Email confirmation disabled — logged in immediately
+          await recordConsents(data.session.user.id);
+          toast.success("Account created — welcome!");
+          navigate({ to: "/portal" });
+        } else {
+          // Email confirmation required
+          setEmailSent(true);
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -76,18 +81,37 @@ function AuthPage() {
   async function handleGoogle() {
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/portal",
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/portal` },
       });
-      if (result.error) {
-        toast.error(result.error.message);
-      } else if (!result.redirected) {
-        if (mode === "signup") await recordConsents();
-        navigate({ to: "/portal" });
-      }
+      if (error) toast.error(error.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  if (emailSent) {
+    return (
+      <main className="min-h-dvh flex items-center justify-center p-6">
+        <div className="w-full max-w-md text-center space-y-4">
+          <span className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
+            <Mail className="h-8 w-8 text-green-600" />
+          </span>
+          <h1 className="text-3xl font-700 font-display">Check your inbox</h1>
+          <p className="text-muted-foreground">
+            We sent a confirmation link to <strong>{email}</strong>.<br />
+            Click it to activate your account and get started.
+          </p>
+          <button
+            onClick={() => setEmailSent(false)}
+            className="text-sm text-coral hover:underline"
+          >
+            ← Back to sign in
+          </button>
+        </div>
+      </main>
+    );
   }
 
   return (
