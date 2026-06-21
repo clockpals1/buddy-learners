@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, RotateCcw, Play, Star } from "lucide-react";
+import { ArrowLeft, RotateCcw, Play, Star, X, Info, Lightbulb, Target, Trophy } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/games/pixel-pet-coder")({
   head: () => ({ meta: [{ title: "Pixel Pet Coder · Leafva Academy" }] }),
@@ -30,10 +31,58 @@ function PixelPetCoder() {
   const [doorPos, setDoorPos] = useState({ x: 0, y: 0 });
   const [showBounce, setShowBounce] = useState(false);
   const [showWag, setShowWag] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(true);
+  const [bestStars, setBestStars] = useState<Record<number, number>>({});
+  const [totalStars, setTotalStars] = useState(0);
 
-  const timerRef = useRef<NodeJS.Timeout>();
+  const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const currentLevel = LEVELS[level];
+
+  // Load progress on mount
+  useEffect(() => {
+    loadProgress();
+  }, []);
+
+  async function loadProgress() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: progress } = await supabase
+      .from("game_progress")
+      .select("level, stars")
+      .eq("user_id", user.id)
+      .eq("game_slug", "pixel-pet-coder");
+
+    if (progress) {
+      const bestStarsMap: Record<number, number> = {};
+      let total = 0;
+      progress.forEach((p: any) => {
+        bestStarsMap[p.level] = Math.max(bestStarsMap[p.level] || 0, p.stars);
+        total += p.stars;
+      });
+      setBestStars(bestStarsMap);
+      setTotalStars(total);
+    }
+  }
+
+  async function saveProgress(levelNum: number, starsEarned: number) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from("game_progress")
+      .upsert({
+        user_id: user.id,
+        game_slug: "pixel-pet-coder",
+        level: levelNum,
+        stars: starsEarned,
+        completed_at: new Date().toISOString(),
+      }, { onConflict: "user_id,game_slug,level" });
+
+    setBestStars(prev => ({ ...prev, [levelNum]: Math.max(prev[levelNum] || 0, starsEarned) }));
+    setTotalStars(prev => prev + (starsEarned - (bestStars[levelNum] || 0)));
+  }
 
   // Generate maze
   useEffect(() => {
@@ -110,11 +159,13 @@ function PixelPetCoder() {
       
       // Calculate stars
       const timeUsed = currentLevel.timeLimit - timeLeft;
-      if (timeUsed <= currentLevel.timeLimit * 0.3) setStars(3);
-      else if (timeUsed <= currentLevel.timeLimit * 0.6) setStars(2);
-      else setStars(1);
+      let earnedStars = 1;
+      if (timeUsed <= currentLevel.timeLimit * 0.3) earnedStars = 3;
+      else if (timeUsed <= currentLevel.timeLimit * 0.6) earnedStars = 2;
+      setStars(earnedStars);
+      saveProgress(level, earnedStars);
     }
-  }, [collected, petPos, doorPos, currentLevel, timeLeft]);
+  }, [collected, petPos, doorPos, currentLevel, timeLeft, level]);
 
   function addBlock(direction: Direction) {
     if (isRunning || isComplete) return;
@@ -147,7 +198,7 @@ function PixelPetCoder() {
       }
       
       // Check wall collision
-      if (newMaze[newPos.y]?.[newPos.x] === false) {
+      if (maze[newPos.y]?.[newPos.x] === false) {
         currentPos = newPos;
         setPetPos(currentPos);
         
@@ -183,17 +234,100 @@ function PixelPetCoder() {
 
   return (
     <div className="min-h-dvh" style={{ background: "linear-gradient(135deg, #fef3c7 0%, #fce7f3 50%, #dbeafe 100%)" }}>
+      {/* Tutorial Modal */}
+      {showTutorial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-bold" style={{ color: "#7c3aed" }}>🎮 How to Play</h2>
+              <button
+                onClick={() => setShowTutorial(false)}
+                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100"
+              >
+                <X className="h-6 w-6" style={{ color: "#6b7280" }} />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="flex gap-4 items-start">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: "#fef3c7" }}>
+                  <Target className="h-6 w-6" style={{ color: "#92400e" }} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg mb-1" style={{ color: "#374151" }}>Your Goal</h3>
+                  <p className="text-sm" style={{ color: "#6b7280" }}>Collect all paw prints 🐾 to unlock the door 🚪 and reach it before time runs out!</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 items-start">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: "#dbeafe" }}>
+                  <Lightbulb className="h-6 w-6" style={{ color: "#1e40af" }} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg mb-1" style={{ color: "#374151" }}>How to Move</h3>
+                  <p className="text-sm mb-2" style={{ color: "#6b7280" }}>Click the arrow buttons to add movement blocks to your program:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="px-3 py-1 rounded-lg text-sm font-bold" style={{ background: "#fef3c7", color: "#92400e" }}>⬆️ Up</span>
+                    <span className="px-3 py-1 rounded-lg text-sm font-bold" style={{ background: "#dbeafe", color: "#1e40af" }}>⬇️ Down</span>
+                    <span className="px-3 py-1 rounded-lg text-sm font-bold" style={{ background: "#fce7f3", color: "#9d174d" }}>⬅️ Left</span>
+                    <span className="px-3 py-1 rounded-lg text-sm font-bold" style={{ background: "#d1fae5", color: "#065f46" }}>➡️ Right</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 items-start">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: "#d1fae5" }}>
+                  <Play className="h-6 w-6" style={{ color: "#065f46" }} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg mb-1" style={{ color: "#374151" }}>Run Your Code</h3>
+                  <p className="text-sm" style={{ color: "#6b7280" }}>Press "Run Code" to watch your pet follow your instructions. If you hit a wall, the pet stops!</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 items-start">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: "#fce7f3" }}>
+                  <Trophy className="h-6 w-6" style={{ color: "#9d174d" }} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg mb-1" style={{ color: "#374151" }}>Earn Stars</h3>
+                  <p className="text-sm" style={{ color: "#6b7280" }}>Complete levels quickly to earn more stars! ⭐⭐⭐ Your progress is saved automatically.</p>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setShowTutorial(false)}
+              className="w-full mt-8 h-14 rounded-xl font-bold text-lg"
+              style={{ background: "#7c3aed", color: "white" }}
+            >
+              Let's Play! 🚀
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-30 px-4 py-3 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)" }}>
-        <Link to="/portal" className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background: "#f0abfc", color: "#86198f" }}>
-          <ArrowLeft className="h-5 w-5" />
-          <span className="font-semibold">Back</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link to="/portal" className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background: "#f0abfc", color: "#86198f" }}>
+            <ArrowLeft className="h-5 w-5" />
+            <span className="font-semibold">Back</span>
+          </Link>
+          <button
+            onClick={() => setShowTutorial(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
+            style={{ background: "#e0e7ff", color: "#4338ca" }}
+          >
+            <Info className="h-4 w-4" />
+            Help
+          </button>
+        </div>
         
         <div className="flex items-center gap-4">
           <div className="text-center">
             <p className="text-xs font-semibold" style={{ color: "#6b7280" }}>Level</p>
-            <p className="text-xl font-bold" style={{ color: "#7c3aed" }}>{level + 1}</p>
+            <p className="text-xl font-bold" style={{ color: "#7c3aed" }}>{level + 1}/3</p>
           </div>
           <div className="text-center">
             <p className="text-xs font-semibold" style={{ color: "#6b7280" }}>Paw Prints</p>
@@ -202,6 +336,10 @@ function PixelPetCoder() {
           <div className="text-center">
             <p className="text-xs font-semibold" style={{ color: "#6b7280" }}>Time</p>
             <p className="text-xl font-bold" style={{ color: timeLeft < 10 ? "#ef4444" : "#10b981" }}>{timeLeft}s</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs font-semibold" style={{ color: "#6b7280" }}>Stars</p>
+            <p className="text-xl font-bold" style={{ color: "#fbbf24" }}>{totalStars}</p>
           </div>
         </div>
         

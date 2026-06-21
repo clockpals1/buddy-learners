@@ -18,7 +18,7 @@ export async function checkFeatureAccess(
   childId: string,
   featureType: FeatureType
 ): Promise<PlanAccess> {
-  // Check if user is admin first
+  // Check if current user is admin
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     const { data: roleData } = await supabase
@@ -28,6 +28,25 @@ export async function checkFeatureAccess(
       .maybeSingle();
     
     if (roleData?.role === "super_admin" || roleData?.role === "instructor") {
+      return { hasAccess: true, accessLevel: "full", requiresUpgrade: false };
+    }
+  }
+
+  // Check if child's parent is admin
+  const { data: child } = await supabase
+    .from("children")
+    .select("parent_id")
+    .eq("id", childId)
+    .maybeSingle();
+  
+  if (child?.parent_id) {
+    const { data: parentRoleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", child.parent_id)
+      .maybeSingle();
+    
+    if (parentRoleData?.role === "super_admin" || parentRoleData?.role === "instructor") {
       return { hasAccess: true, accessLevel: "full", requiresUpgrade: false };
     }
   }
@@ -56,7 +75,7 @@ export async function checkFeatureAccess(
     return { hasAccess: false, accessLevel: "none", requiresUpgrade: true };
   }
 
-  const planFeature = enrollment.plans.plan_features?.find(
+  const planFeature = (enrollment.plans as any).plan_features?.find(
     (f: any) => f.feature_type === featureType
   );
 
@@ -78,7 +97,7 @@ export async function checkFeatureAccess(
  * Check if a specific game is free or requires a plan
  */
 export async function checkGameAccess(gameSlug: string, childId: string): Promise<PlanAccess> {
-  // Check if user is admin
+  // Check if current user is admin
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     const { data: roleData } = await supabase
@@ -92,8 +111,27 @@ export async function checkGameAccess(gameSlug: string, childId: string): Promis
     }
   }
 
+  // Check if child's parent is admin
+  const { data: child } = await supabase
+    .from("children")
+    .select("parent_id")
+    .eq("id", childId)
+    .maybeSingle();
+  
+  if (child?.parent_id) {
+    const { data: parentRoleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", child.parent_id)
+      .maybeSingle();
+    
+    if (parentRoleData?.role === "super_admin" || parentRoleData?.role === "instructor") {
+      return { hasAccess: true, accessLevel: "full", requiresUpgrade: false };
+    }
+  }
+
   // Get game config
-  const { data: gameConfig } = await supabase
+  const { data: gameConfig } = await (supabase as any)
     .from("game_config")
     .select("*")
     .eq("slug", gameSlug)
@@ -130,7 +168,7 @@ export async function checkGameAccess(gameSlug: string, childId: string): Promis
   // Check if plan meets minimum requirement
   const planHierarchy = { free: 0, family: 1, school: 2 };
   const minLevel = gameConfig.min_plan_kind ? planHierarchy[gameConfig.min_plan_kind as keyof typeof planHierarchy] || 0 : 0;
-  const currentLevel = planHierarchy[enrollment.plans.kind as keyof typeof planHierarchy] || 0;
+  const currentLevel = planHierarchy[(enrollment.plans as any).kind as keyof typeof planHierarchy] || 0;
 
   const hasAccess = currentLevel >= minLevel;
   return {

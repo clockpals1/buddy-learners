@@ -1,7 +1,23 @@
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Nav() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthenticated(!!data.session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-cream/70 border-b border-border/50">
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
@@ -18,18 +34,30 @@ export default function Nav() {
           <a href="#faq" className="hover:text-foreground transition">FAQ</a>
         </nav>
         <div className="flex items-center gap-2">
-          <Link
-            to="/auth"
-            className="hidden sm:inline-flex h-10 items-center px-4 rounded-full text-sm font-medium text-foreground hover:bg-muted transition"
-          >
-            Sign in
-          </Link>
-          <a
-            href="#register"
-            className="inline-flex h-10 items-center px-5 rounded-full bg-gradient-cta text-coral-foreground text-sm font-semibold shadow-pop hover:scale-[1.03] transition"
-          >
-            Join the camp
-          </a>
+          {isAuthenticated ? (
+            <Link
+              to="/portal"
+              className="inline-flex h-10 items-center px-5 rounded-full bg-gradient-cta text-coral-foreground text-sm font-semibold shadow-pop hover:scale-[1.03] transition"
+            >
+              Go to Portal
+            </Link>
+          ) : (
+            <>
+              <Link
+                to="/auth"
+                search={{ mode: "signin" }}
+                className="hidden sm:inline-flex h-10 items-center px-4 rounded-full text-sm font-medium text-foreground hover:bg-muted transition"
+              >
+                Sign in
+              </Link>
+              <a
+                href="#register"
+                className="inline-flex h-10 items-center px-5 rounded-full bg-gradient-cta text-coral-foreground text-sm font-semibold shadow-pop hover:scale-[1.03] transition"
+              >
+                Join the camp
+              </a>
+            </>
+          )}
         </div>
       </div>
     </header>

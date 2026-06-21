@@ -146,3 +146,27 @@ CREATE POLICY "Admins manage plan features" ON public.plan_features FOR ALL TO a
 DROP POLICY IF EXISTS "Admins manage enrollments" ON public.enrollments;
 CREATE POLICY "Admins manage enrollments" ON public.enrollments FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'super_admin') OR public.has_role(auth.uid(), 'instructor'));
+
+-- Add game progress table for tracking user game completion
+CREATE TABLE IF NOT EXISTS public.game_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  game_slug TEXT NOT NULL,
+  level INTEGER NOT NULL,
+  stars INTEGER NOT NULL CHECK (stars >= 1 AND stars <= 3),
+  completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, game_slug, level)
+);
+
+-- Enable RLS on game_progress
+ALTER TABLE public.game_progress ENABLE ROW LEVEL SECURITY;
+
+-- Users can manage their own game progress
+CREATE POLICY "Users manage own game progress" ON public.game_progress FOR ALL
+  TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- Admins can read all game progress
+CREATE POLICY "Admins read all game progress" ON public.game_progress FOR SELECT
+  TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'instructor'))
+  );
