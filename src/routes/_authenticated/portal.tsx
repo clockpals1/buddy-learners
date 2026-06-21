@@ -317,6 +317,14 @@ function EnrollButton({ childId }: { childId: string }) {
     },
   });
 
+  const { data: plans } = useQuery({
+    queryKey: ["plans-active"],
+    queryFn: async () => {
+      const { data } = await supabase.from("plans").select("id, name, kind").eq("is_active", true).order("price_cents");
+      return data ?? [];
+    },
+  });
+
   if (enrollment?.payment_status === "active" && enrollment.plans) {
     const plan = enrollment.plans as any;
     const planEmoji = plan.kind === "family" ? "👨‍👩‍👧‍👦" : plan.kind === "school" ? "🏫" : "🆓";
@@ -331,10 +339,13 @@ function EnrollButton({ childId }: { childId: string }) {
     );
   }
 
+  const firstPlan = plans?.[0];
+  if (!firstPlan) return null;
+
   return (
     <Link
       to="/checkout"
-      search={{ childId }}
+      search={{ planId: firstPlan.id, childId }}
       className="h-9 px-3 flex items-center rounded-xl text-sm font-medium border border-border hover:bg-muted transition"
       title="Enroll in a plan"
     >
