@@ -126,9 +126,15 @@ function TypingNinjas() {
     setScore(0);
     setLives(3);
     setCombo(0);
-    setLetters([]);
-    // Spawn first letter immediately
-    spawnLetter();
+    setLetters([{
+      id: "test",
+      char: "A",
+      x: 300,
+      y: 200,
+      speed: 1,
+    }]);
+    // Spawn first letter after delay
+    setTimeout(spawnLetter, 500);
   }
 
   function pauseGame() {
