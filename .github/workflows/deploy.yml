@@ -33,10 +33,15 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           NODE_ENV: production
 
+      - name: Check build output exists
+        run: |
+          echo "=== Build output ==="
+          ls -la .output/ || echo "WARNING: .output/ not found!"
+          ls -la .output/public/ || echo "WARNING: .output/public/ not found!"
+
       - name: Publish to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # wrangler.toml declares pages_build_output_dir — no extra flags needed
-          command: pages deploy .output/public --project-name=leafva-academy
+          command: pages deploy .output/public --project-name=leafva-academy --branch=main --commit-dirty=true
