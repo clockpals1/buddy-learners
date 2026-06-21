@@ -298,7 +298,7 @@ function GamesTab({ childId, track, meta }: { childId: string; track: string; me
               <p className="text-sm" style={{ color: "oklch(0.55 0.01 270)" }}>{g.desc}</p>
               {!g.soon && !isLocked && (
                 <Link
-                  to="/games/pixel-pet-coder"
+                  to={g.slug === "pixel-pet-coder" ? "/games/pixel-pet-coder" : g.slug === "typing-ninjas" ? "/games/typing-ninjas" : "#"}
                   search={{ childId }}
                   className="mt-4 w-full py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 flex items-center justify-center"
                   style={{ background: meta.color, color: "white" }}

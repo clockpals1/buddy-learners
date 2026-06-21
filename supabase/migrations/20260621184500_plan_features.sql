@@ -163,6 +163,19 @@ CREATE TABLE IF NOT EXISTS public.game_progress (
   UNIQUE(user_id, child_id, game_slug, level)
 );
 
+-- Add child_id column if table already exists without it
+DO $$ BEGIN
+  ALTER TABLE public.game_progress ADD COLUMN IF NOT EXISTS child_id UUID REFERENCES public.children(id) ON DELETE CASCADE;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+-- Drop old unique constraint and add new one with child_id
+DO $$ BEGIN
+  ALTER TABLE public.game_progress DROP CONSTRAINT IF EXISTS game_progress_user_id_game_slug_level_key;
+EXCEPTION WHEN undefined_object THEN NULL; END $$;
+
+ALTER TABLE public.game_progress ADD CONSTRAINT game_progress_user_id_child_id_game_slug_level_key
+  UNIQUE(user_id, child_id, game_slug, level);
+
 -- Enable RLS on game_progress
 ALTER TABLE public.game_progress ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users manage own game progress" ON public.game_progress;
