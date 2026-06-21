@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, RotateCcw, Play, Star, X, Info, Lightbulb, Target, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/_authenticated/games/pixel-pet-coder")({
   head: () => ({ meta: [{ title: "Pixel Pet Coder · Leafva Academy" }] }),
   component: PixelPetCoder,
+  validateSearch: (search: Record<string, unknown>) => ({
+    childId: search.childId as string | undefined,
+  }),
 });
 
 type Direction = "up" | "down" | "left" | "right";
@@ -18,6 +21,7 @@ const LEVELS = [
 ];
 
 function PixelPetCoder() {
+  const { childId } = useSearch({ from: "/_authenticated/games/pixel-pet-coder" });
   const [level, setLevel] = useState(0);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [petPos, setPetPos] = useState({ x: 0, y: 0 });
@@ -46,12 +50,13 @@ function PixelPetCoder() {
 
   async function loadProgress() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user || !childId) return;
 
-    const { data: progress } = await supabase
+    const { data: progress } = await (supabase as any)
       .from("game_progress")
       .select("level, stars")
       .eq("user_id", user.id)
+      .eq("child_id", childId)
       .eq("game_slug", "pixel-pet-coder");
 
     if (progress) {
@@ -68,17 +73,18 @@ function PixelPetCoder() {
 
   async function saveProgress(levelNum: number, starsEarned: number) {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user || !childId) return;
 
-    await supabase
+    await (supabase as any)
       .from("game_progress")
       .upsert({
         user_id: user.id,
+        child_id: childId,
         game_slug: "pixel-pet-coder",
         level: levelNum,
         stars: starsEarned,
         completed_at: new Date().toISOString(),
-      }, { onConflict: "user_id,game_slug,level" });
+      }, { onConflict: "user_id,child_id,game_slug,level" });
 
     setBestStars(prev => ({ ...prev, [levelNum]: Math.max(prev[levelNum] || 0, starsEarned) }));
     setTotalStars(prev => prev + (starsEarned - (bestStars[levelNum] || 0)));

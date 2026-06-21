@@ -299,6 +299,7 @@ function GamesTab({ childId, track, meta }: { childId: string; track: string; me
               {!g.soon && !isLocked && (
                 <Link
                   to="/games/pixel-pet-coder"
+                  search={{ childId }}
                   className="mt-4 w-full py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 flex items-center justify-center"
                   style={{ background: meta.color, color: "white" }}
                 >

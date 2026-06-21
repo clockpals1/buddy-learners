@@ -155,11 +155,12 @@ CREATE POLICY "Admins manage enrollments" ON public.enrollments FOR ALL TO authe
 CREATE TABLE IF NOT EXISTS public.game_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  child_id UUID REFERENCES public.children(id) ON DELETE CASCADE,
   game_slug TEXT NOT NULL,
   level INTEGER NOT NULL,
   stars INTEGER NOT NULL CHECK (stars >= 1 AND stars <= 3),
   completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(user_id, game_slug, level)
+  UNIQUE(user_id, child_id, game_slug, level)
 );
 
 -- Enable RLS on game_progress

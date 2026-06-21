@@ -246,7 +246,7 @@ function ChildCard({ child, meta }: { child: Child; meta: typeof TRACK_META[keyo
       const { data } = await (supabase as any)
         .from("game_progress")
         .select("id")
-        .eq("user_id", child.id);
+        .eq("child_id", child.id);
       return data?.length ?? 0;
     },
   });
