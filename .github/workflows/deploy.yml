@@ -45,6 +45,7 @@ jobs:
 
       - name: Publish to Cloudflare Pages
         run: |
+          wrangler pages project create leafva-academy --production-branch=main 2>/dev/null || true
           wrangler pages deploy .output/public \
             --project-name=leafva-academy \
             --branch=main \
