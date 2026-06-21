@@ -35,13 +35,20 @@ jobs:
 
       - name: Check build output exists
         run: |
-          echo "=== Build output ==="
+          echo "=== .output contents ==="
           ls -la .output/ || echo "WARNING: .output/ not found!"
+          echo "=== .output/public contents ==="
           ls -la .output/public/ || echo "WARNING: .output/public/ not found!"
 
+      - name: Install Wrangler
+        run: npm install -g wrangler@latest
+
       - name: Publish to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .output/public --project-name=leafva-academy --branch=main --commit-dirty=true
+        run: |
+          wrangler pages deploy .output/public \
+            --project-name=leafva-academy \
+            --branch=main \
+            --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
