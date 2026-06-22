@@ -40,6 +40,8 @@ function TypingNinjas() {
   const [showTutorial, setShowTutorial] = useState(true);
   const [bestStars, setBestStars] = useState<Record<number, number>>({});
   const [totalStars, setTotalStars] = useState(0);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<{ name: string; score: number; child_id: string }[]>([]);
 
   const gameRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +52,26 @@ function TypingNinjas() {
   // Load progress on mount
   useEffect(() => {
     loadProgress();
+    loadLeaderboard();
   }, []);
+
+  async function loadLeaderboard() {
+    const { data: scores } = await (supabase as any)
+      .from("game_progress")
+      .select("child_id, game_slug, level, stars, children(display_name)")
+      .eq("game_slug", "typing-ninjas")
+      .order("stars", { ascending: false })
+      .limit(10);
+
+    if (scores) {
+      const leaderboardData = scores.map((s: any) => ({
+        name: s.children?.display_name || "Anonymous",
+        score: s.stars,
+        child_id: s.child_id,
+      }));
+      setLeaderboard(leaderboardData);
+    }
+  }
 
   async function loadProgress() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -126,13 +147,7 @@ function TypingNinjas() {
     setScore(0);
     setLives(3);
     setCombo(0);
-    setLetters([{
-      id: "test",
-      char: "A",
-      x: 300,
-      y: 200,
-      speed: 1,
-    }]);
+    setLetters([]);
     // Spawn first letter after delay
     setTimeout(spawnLetter, 500);
   }
@@ -332,8 +347,15 @@ function TypingNinjas() {
             Back
           </Link>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-white">
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className="flex items-center gap-2 text-white hover:opacity-80 transition"
+            >
               <Trophy className="h-5 w-5 text-yellow-400" />
+              <span className="font-bold">Leaderboard</span>
+            </button>
+            <div className="flex items-center gap-2 text-white">
+              <Star className="h-5 w-5 text-yellow-400" />
               <span className="font-bold">{totalStars}</span>
             </div>
           </div>
@@ -489,6 +511,48 @@ function TypingNinjas() {
           </>
         )}
       </div>
+
+      {/* Leaderboard Modal */}
+      {showLeaderboard && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">🏆 Leaderboard</h2>
+              <button
+                onClick={() => setShowLeaderboard(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {leaderboard.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No scores yet. Be the first!</p>
+              ) : (
+                leaderboard.map((entry, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-center justify-between p-3 rounded-lg ${
+                      index === 0 ? "bg-yellow-50 border-2 border-yellow-400" :
+                      index === 1 ? "bg-gray-50 border-2 border-gray-300" :
+                      index === 2 ? "bg-orange-50 border-2 border-orange-300" :
+                      "bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl font-bold">
+                        {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
+                      </span>
+                      <span className="font-semibold text-gray-800">{entry.name}</span>
+                    </div>
+                    <span className="font-bold text-purple-600">{entry.score} ⭐</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
