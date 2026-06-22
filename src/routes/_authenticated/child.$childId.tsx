@@ -302,7 +302,8 @@ function GamesTab({ childId, track, meta }: { childId: string; track: string; me
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {myGames.map(g => {
           const gameAccess = gamesAccess?.[g.slug];
-          const isLocked = !gameAccess?.hasAccess;
+          // Only lock when we have a confirmed false — not while loading (undefined)
+          const isLocked = gameAccess !== undefined && gameAccess.hasAccess === false;
           
           return (
             <div key={g.slug} className="rounded-2xl p-5 bg-white relative overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>

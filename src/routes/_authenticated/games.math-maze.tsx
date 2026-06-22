@@ -2,6 +2,7 @@ import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, Star, Trophy, X, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { awardBadge, checkGameMasterBadge } from "@/lib/badge-sync";
 
 export const Route = createFileRoute("/_authenticated/games/math-maze")({
   head: () => ({ meta: [{ title: "Math Maze Master · Leafva Academy" }] }),
@@ -151,6 +152,10 @@ function MathMazeMaster() {
       level: worldIdx, stars: starsEarned, completed_at: new Date().toISOString(),
     }, { onConflict: "user_id,child_id,game_slug,level" });
     setTotalStars(prev => prev + starsEarned);
+    // Award badges
+    await awardBadge(childId, "math_explorer");
+    if (worldIdx >= 2) await awardBadge(childId, "math_master");
+    await checkGameMasterBadge(childId);
     loadLeaderboard();
   }
 

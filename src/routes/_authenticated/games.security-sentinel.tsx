@@ -2,6 +2,7 @@ import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Trophy, X, Star, Shield, Lock, Wifi, Eye, AlertTriangle, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { awardBadge, getEarnedBadges, checkGameMasterBadge } from "@/lib/badge-sync";
 
 export const Route = createFileRoute("/_authenticated/games/security-sentinel")({
   head: () => ({ meta: [{ title: "Security Sentinel · Leafva Academy" }] }),
@@ -125,6 +126,14 @@ function SecuritySentinel() {
 
   useEffect(() => { loadProgress(); loadLeaderboard(); }, []);
 
+  async function syncEarnedBadges() {
+    if (!childId) return;
+    const earned = await getEarnedBadges(childId);
+    const gameBadgeSlugs = ["password_guardian", "phishing_detective", "firewall_hero", "security_recruit", "cyber_pioneer_badge"];
+    const localBadgeTypes = gameBadgeSlugs.filter(s => earned.includes(s));
+    setBadges(localBadgeTypes);
+  }
+
   async function loadLeaderboard() {
     const { data: scores } = await (supabase as any)
       .from("game_progress").select("child_id, stars, children(display_name)")
@@ -142,6 +151,7 @@ function SecuritySentinel() {
       setTotalStars(total);
       setCompletedMissions(new Set(progress.map((p: any) => String(p.level))));
     }
+    await syncEarnedBadges();
   }
 
   async function saveProgress(missionId: string, starsEarned: number) {
@@ -169,6 +179,14 @@ function SecuritySentinel() {
     setWifiSelected(null); setWifiFeedback(null);
   }
 
+  const BADGE_MAP: Record<MissionType, string> = {
+    password: "password_guardian",
+    phishing: "phishing_detective",
+    firewall: "firewall_hero",
+    encryption: "security_recruit",
+    wifi: "cyber_pioneer_badge",
+  };
+
   function completeMission(success: boolean, xpGained: number) {
     if (!activeMission) return;
     if (success) {
@@ -177,7 +195,13 @@ function SecuritySentinel() {
       if (newXp >= level * 500) setLevel(l => l + 1);
       const stars = xpGained >= activeMission.xpReward ? 3 : xpGained >= activeMission.xpReward * 0.6 ? 2 : 1;
       saveProgress(activeMission.id, stars);
-      if (!badges.includes(activeMission.type)) setBadges(b => [...b, activeMission.type]);
+      if (!badges.includes(activeMission.type)) {
+        setBadges(b => [...b, activeMission.type]);
+        if (childId) {
+          awardBadge(childId, BADGE_MAP[activeMission.type]);
+          checkGameMasterBadge(childId);
+        }
+      }
     }
     setMissionResult({ success, msg: success ? "Mission Complete! 🎉" : "Keep Training! 💪", xpGained });
   }

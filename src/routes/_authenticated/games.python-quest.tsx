@@ -2,6 +2,7 @@ import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Trophy, X, Star, Play, Zap, Lock, ChevronRight, RotateCcw, Lightbulb, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { awardBadge, checkGameMasterBadge } from "@/lib/badge-sync";
 
 export const Route = createFileRoute("/_authenticated/games/python-quest")({
   head: () => ({ meta: [{ title: "Python Quest · Leafva Academy" }] }),
@@ -399,7 +400,17 @@ function PythonQuest() {
       user_id: user.id, child_id: childId, game_slug: "python-quest",
       level: levelNum, stars: 3, completed_at: new Date().toISOString(),
     }, { onConflict: "user_id,child_id,game_slug,level" });
-    setCompletedQuests(prev => new Set([...prev, questId]));
+    setCompletedQuests(prev => {
+      const updated = new Set([...prev, questId]);
+      // Award badges based on progress
+      if (questId === "w1q1") awardBadge(childId!, "python_hello");
+      if (worldNum === 1 && questNum === 3) awardBadge(childId!, "python_apprentice");
+      if (worldNum === 3 && questNum === 3) awardBadge(childId!, "loop_master");
+      if (worldNum === 5 && questNum === 3) awardBadge(childId!, "function_wizard");
+      if (updated.size >= 9) awardBadge(childId!, "python_ranger");
+      checkGameMasterBadge(childId!);
+      return updated;
+    });
     setXp(prev => { const newXp = prev + xpGained; if (newXp >= level * 500) setLevel(l => l + 1); return newXp; });
     setTotalStars(prev => prev + 3);
     loadLeaderboard();

@@ -137,15 +137,6 @@ export async function checkGameAccess(gameSlug: string, childId: string): Promis
     .eq("slug", gameSlug)
     .maybeSingle();
 
-  if (!gameConfig) {
-    return { hasAccess: false, accessLevel: "none", requiresUpgrade: true };
-  }
-
-  // Free games are always accessible
-  if (gameConfig.is_free) {
-    return { hasAccess: true, accessLevel: "full", requiresUpgrade: false };
-  }
-
   // Check child's enrollment for plan-based access
   const { data: enrollment } = await supabase
     .from("enrollments")
@@ -161,6 +152,18 @@ export async function checkGameAccess(gameSlug: string, childId: string): Promis
     .eq("payment_status", "active")
     .maybeSingle();
 
+  // Game not in config table — treat as free if child has any active enrollment,
+  // otherwise still grant access (game is new and not yet restricted)
+  if (!gameConfig) {
+    return { hasAccess: true, accessLevel: "full", requiresUpgrade: false };
+  }
+
+  // Free games are always accessible
+  if (gameConfig.is_free) {
+    return { hasAccess: true, accessLevel: "full", requiresUpgrade: false };
+  }
+
+  // Paid game — needs active enrollment
   if (!enrollment || !enrollment.plans) {
     return { hasAccess: false, accessLevel: "none", requiresUpgrade: true };
   }
@@ -175,7 +178,7 @@ export async function checkGameAccess(gameSlug: string, childId: string): Promis
     hasAccess,
     accessLevel: hasAccess ? "full" : "none",
     requiresUpgrade: !hasAccess,
-    planName: enrollment.plans.name,
+    planName: (enrollment.plans as any).name,
   };
 }
 
