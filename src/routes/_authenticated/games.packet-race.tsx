@@ -1,154 +1,111 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Play, Star, X, Heart, Trophy, Zap, Shield, RotateCcw, Sparkles, Gift } from "lucide-react";
+import { ArrowLeft, Play, Star, X, Heart, Trophy, RotateCcw, Wifi, Router, Server, Laptop, Smartphone, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/games/packet-race")({
-  head: () => ({ meta: [{ title: "Packet Race · Leafva Academy" }] }),
-  component: PacketRace,
+  head: () => ({ meta: [{ title: "Network Builder · Leafva Academy" }] }),
+  component: NetworkBuilder,
   validateSearch: (search: Record<string, unknown>) => ({
     childId: search.childId as string | undefined,
   }),
 });
 
+type Device = {
+  id: string;
+  type: "computer" | "router" | "server" | "phone";
+  x: number;
+  y: number;
+  connected: boolean;
+};
+
+type Connection = {
+  id: string;
+  from: string;
+  to: string;
+  active: boolean;
+};
+
 type Packet = {
-  x: number;
-  y: number;
-  speed: number;
-  hasShield: boolean;
-  hasTurbo: boolean;
-  hasMagnet: boolean;
-  trail: { x: number; y: number }[];
-};
-
-type Collectible = {
   id: string;
   x: number;
   y: number;
-  type: "coin" | "gem" | "star" | "turbo" | "shield" | "magnet" | "key";
-  collected: boolean;
-};
-
-type Obstacle = {
-  id: string;
-  x: number;
-  y: number;
-  type: "rock" | "spike" | "cloud" | "virus";
-  width: number;
-  height: number;
+  targetId: string;
+  path: string[];
+  progress: number;
 };
 
 const WORLDS = [
   { 
-    name: "Home WiFi", 
+    name: "Home Network", 
     color: "#3B82F6", 
-    bgFrom: "#1e3a8a", 
-    bgTo: "#1e40af",
-    description: "Help the packet reach your home computer!",
+    description: "Connect your home devices to the internet!",
     emoji: "🏠",
-    targetDistance: 500,
+    targetDevices: 3,
+    tutorial: "Drag devices from the toolbox and connect them with cables to build your home network."
   },
   { 
-    name: "Neighborhood", 
+    name: "School Network", 
     color: "#10B981", 
-    bgFrom: "#064e3b", 
-    bgTo: "#065f46",
-    description: "Race through the neighborhood network!",
-    emoji: "🏘️",
-    targetDistance: 750,
+    description: "Build a network for your school classroom!",
+    emoji: "🏫",
+    targetDevices: 5,
+    tutorial: "Use routers to connect multiple groups of computers together."
   },
   { 
-    name: "City Internet", 
+    name: "City Network", 
     color: "#F59E0B", 
-    bgFrom: "#78350f", 
-    bgTo: "#92400e",
-    description: "Zoom through the busy city streets!",
+    description: "Connect buildings across the city!",
     emoji: "🏙️",
-    targetDistance: 1000,
+    targetDevices: 7,
+    tutorial: "Servers store data - connect them to share information across the network."
   },
   { 
-    name: "Cloud Highway", 
+    name: "Internet Backbone", 
     color: "#8B5CF6", 
-    bgFrom: "#5b21b6", 
-    bgTo: "#6d28d9",
-    description: "Speed through the magical cloud highway!",
-    emoji: "☁️",
-    targetDistance: 1250,
-  },
-  { 
-    name: "Ocean Cables", 
-    color: "#06B6D4", 
-    bgFrom: "#164e63", 
-    bgTo: "#155e75",
-    description: "Dive deep into the underwater cables!",
-    emoji: "🌊",
-    targetDistance: 1500,
-  },
-  { 
-    name: "Space Network", 
-    color: "#EC4899", 
-    bgFrom: "#831843", 
-    bgTo: "#9d174d",
-    description: "Bounce through satellites in space!",
-    emoji: "🚀",
-    targetDistance: 2000,
+    description: "Build the global internet infrastructure!",
+    emoji: "🌐",
+    targetDevices: 10,
+    tutorial: "Connect multiple servers and routers to create a fast, reliable network."
   },
 ];
 
-const SKINS = [
-  { id: "default", name: "Classic Packet", emoji: "📦", color: "#8B5CF6" },
-  { id: "rainbow", name: "Rainbow", emoji: "🌈", color: "#F59E0B" },
-  { id: "fire", name: "Fire", emoji: "🔥", color: "#EF4444" },
-  { id: "ice", name: "Ice", emoji: "❄️", color: "#3B82F6" },
-  { id: "star", name: "Star", emoji: "⭐", color: "#FCD34D" },
-  { id: "robot", name: "Robot", emoji: "🤖", color: "#10B981" },
+const DEVICE_TYPES = [
+  { type: "computer" as const, name: "Computer", icon: Laptop, color: "#3B82F6" },
+  { type: "router" as const, name: "Router", icon: Router, color: "#10B981" },
+  { type: "server" as const, name: "Server", icon: Server, color: "#F59E0B" },
+  { type: "phone" as const, name: "Phone", icon: Smartphone, color: "#EC4899" },
 ];
 
-function PacketRace() {
+function NetworkBuilder() {
   const { childId } = useSearch({ from: "/_authenticated/games/packet-race" });
   const [world, setWorld] = useState(0);
-  const [level, setLevel] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
-  const [coins, setCoins] = useState(0);
   const [lives, setLives] = useState(3);
-  const [packet, setPacket] = useState<Packet>({ 
-    x: 50, 
-    y: 300, 
-    speed: 3, 
-    hasShield: false, 
-    hasTurbo: false, 
-    hasMagnet: false,
-    trail: [] 
-  });
-  const [collectibles, setCollectibles] = useState<Collectible[]>([]);
-  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [packets, setPackets] = useState<Packet[]>([]);
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [showTutorial, setShowTutorial] = useState(true);
-  const [selectedSkin, setSelectedSkin] = useState(SKINS[0]);
-  const [unlockedSkins, setUnlockedSkins] = useState<string[]>(["default"]);
-  const [combo, setCombo] = useState(0);
-  const [maxCombo, setMaxCombo] = useState(0);
-  const [showCombo, setShowCombo] = useState(false);
-  const [distance, setDistance] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [victory, setVictory] = useState(false);
+  const [totalStars, setTotalStars] = useState(0);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<{ name: string; score: number; child_id: string }[]>([]);
-  const [totalStars, setTotalStars] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [victory, setVictory] = useState(false);
+  const [packetsDelivered, setPacketsDelivered] = useState(0);
 
   const gameRef = useRef<HTMLDivElement>(null);
-  const keysPressed = useRef<Set<string>>(new Set());
 
   const currentWorld = WORLDS[world];
-  const targetDistance = currentWorld.targetDistance + (level * 100);
+  const targetDevices = currentWorld.targetDevices;
 
   // Load progress on mount
   useEffect(() => {
     loadProgress();
     loadLeaderboard();
-    const savedSkins = localStorage.getItem("unlockedSkins");
-    if (savedSkins) setUnlockedSkins(JSON.parse(savedSkins));
   }, []);
 
   async function loadLeaderboard() {
@@ -182,7 +139,7 @@ function PacketRace() {
 
     if (progress) {
       let total = 0;
-      progress.forEach((p: any) => total += p.stars);
+      progress.forEach((p: any) total += p.stars);
       setTotalStars(total);
     }
   }
@@ -206,61 +163,104 @@ function PacketRace() {
     loadLeaderboard();
   }
 
-  function generateLevel() {
-    const newCollectibles: Collectible[] = [];
-    const newObstacles: Obstacle[] = [];
+  function addDevice(type: Device["type"], x: number, y: number) {
+    const newDevice: Device = {
+      id: Math.random().toString(36).substr(2, 9),
+      type,
+      x,
+      y,
+      connected: false,
+    };
+    setDevices(prev => [...prev, newDevice]);
+    setScore(prev => prev + 10);
+  }
 
-    // Generate collectibles
-    for (let i = 0; i < 30 + world * 5; i++) {
-      const types: Collectible["type"][] = ["coin", "coin", "coin", "gem", "star", "turbo", "shield", "magnet", "key"];
-      newCollectibles.push({
-        id: `collectible-${i}`,
-        x: 100 + Math.random() * (targetDistance - 200),
-        y: 80 + Math.random() * 340,
-        type: types[Math.floor(Math.random() * types.length)],
-        collected: false,
-      });
+  function removeDevice(id: string) {
+    setDevices(prev => prev.filter(d => d.id !== id));
+    setConnections(prev => prev.filter(c => c.from !== id && c.to !== id));
+  }
+
+  function addConnection(from: string, to: string) {
+    if (from === to) return;
+    const exists = connections.some(c => 
+      (c.from === from && c.to === to) || (c.from === to && c.to === from)
+    );
+    if (exists) return;
+
+    const newConnection: Connection = {
+      id: Math.random().toString(36).substr(2, 9),
+      from,
+      to,
+      active: true,
+    };
+    setConnections(prev => [...prev, newConnection]);
+    setScore(prev => prev + 15);
+    
+    // Mark devices as connected
+    setDevices(prev => prev.map(d => 
+      (d.id === from || d.id === to) ? { ...d, connected: true } : d
+    ));
+  }
+
+  function removeConnection(id: string) {
+    setConnections(prev => prev.filter(c => c.id !== id));
+  }
+
+  function sendPacket(fromId: string, toId: string) {
+    // Find path using BFS
+    const path = findPath(fromId, toId);
+    if (!path || path.length === 0) return;
+
+    const newPacket: Packet = {
+      id: Math.random().toString(36).substr(2, 9),
+      x: devices.find(d => d.id === fromId)?.x || 0,
+      y: devices.find(d => d.id === fromId)?.y || 0,
+      targetId: toId,
+      path,
+      progress: 0,
+    };
+    setPackets(prev => [...prev, newPacket]);
+  }
+
+  function findPath(from: string, to: string): string[] {
+    const queue: { node: string; path: string[] }[] = [{ node: from, path: [from] }];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const { node, path } = queue.shift()!;
+      
+      if (node === to) return path;
+      if (visited.has(node)) continue;
+      visited.add(node);
+
+      const neighbors = connections
+        .filter(c => c.from === node || c.to === node)
+        .map(c => c.from === node ? c.to : c.from);
+
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor)) {
+          queue.push({ node: neighbor, path: [...path, neighbor] });
+        }
+      }
     }
 
-    // Generate obstacles
-    for (let i = 0; i < 10 + world * 3; i++) {
-      const types: Obstacle["type"][] = ["rock", "spike", "cloud", "virus"];
-      const type = types[Math.floor(Math.random() * types.length)];
-      newObstacles.push({
-        id: `obstacle-${i}`,
-        x: 150 + i * (targetDistance / (10 + world * 3)),
-        y: 100 + Math.random() * 300,
-        type,
-        width: type === "cloud" ? 120 : 60,
-        height: type === "cloud" ? 60 : 60,
-      });
-    }
-
-    setCollectibles(newCollectibles);
-    setObstacles(newObstacles);
+    return [];
   }
 
   function startGame() {
     setIsPlaying(true);
     setIsPaused(false);
     setScore(0);
-    setCoins(0);
     setLives(3);
-    setCombo(0);
-    setMaxCombo(0);
-    setDistance(0);
-    setPacket({ 
-      x: 50, 
-      y: 300, 
-      speed: 3, 
-      hasShield: false, 
-      hasTurbo: false, 
-      hasMagnet: false,
-      trail: [] 
-    });
+    setDevices([]);
+    setConnections([]);
+    setPackets([]);
+    setPacketsDelivered(0);
     setGameOver(false);
     setVictory(false);
-    generateLevel();
+    
+    // Add initial server
+    addDevice("server", 100, 250);
   }
 
   function pauseGame() {
@@ -271,202 +271,111 @@ function PacketRace() {
     setIsPaused(false);
   }
 
-  // Keyboard controls
+  function endGame() {
+    setIsPlaying(false);
+    setIsPaused(false);
+
+    const stars = score >= 100 ? 3 : score >= 50 ? 2 : score >= 20 ? 1 : 0;
+    if (stars > 0) {
+      saveProgress(world, stars);
+    }
+  }
+
+  // Check victory condition
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      keysPressed.current.add(e.key);
-      if (e.key === " " || e.key === "Escape") {
-        if (isPlaying) {
-          setIsPaused(prev => !prev);
-        }
+    if (isPlaying && !isPaused) {
+      const connectedDevices = devices.filter(d => d.connected).length;
+      if (connectedDevices >= targetDevices && packetsDelivered >= 5) {
+        setVictory(true);
+        setGameOver(true);
+        setIsPlaying(false);
       }
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysPressed.current.delete(e.key);
-    };
+    }
+  }, [devices, packetsDelivered, isPlaying, isPaused, targetDevices]);
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [isPlaying]);
-
-  // Game loop
+  // Animate packets
   useEffect(() => {
     if (!isPlaying || isPaused) return;
 
     const interval = setInterval(() => {
-      setPacket(prev => {
-        let newX = prev.x;
-        let newY = prev.y;
-        let newSpeed = prev.speed;
-
-        // Movement
-        if (keysPressed.current.has("ArrowUp") || keysPressed.current.has("w")) newY -= 5;
-        if (keysPressed.current.has("ArrowDown") || keysPressed.current.has("s")) newY += 5;
-        if (keysPressed.current.has("ArrowLeft") || keysPressed.current.has("a")) newX -= 3;
-        if (keysPressed.current.has("ArrowRight") || keysPressed.current.has("d")) newX += 3;
-
-        // Auto-forward movement
-        newX += newSpeed;
-
-        // Boundaries
-        newY = Math.max(50, Math.min(450, newY));
-        newX = Math.max(0, newX);
-
-        // Trail effect
-        const newTrail = [...prev.trail, { x: newX, y: newY }].slice(-10);
-
-        // Check collectibles
-        collectibles.forEach(c => {
-          if (!c.collected) {
-            const dist = Math.sqrt(Math.pow(newX - c.x, 2) + Math.pow(newY - c.y, 2));
-            const magnetRange = prev.hasMagnet ? 100 : 30;
-            
-            if (dist < magnetRange) {
-              // Magnet effect
-              if (prev.hasMagnet && dist > 30) {
-                setCollectibles(prevC => prevC.map(col => 
-                  col.id === c.id ? { ...col, x: col.x + (newX - col.x) * 0.1, y: col.y + (newY - col.y) * 0.1 } : col
-                ));
-              } else {
-                c.collected = true;
-                setCollectibles(prevC => prevC.map(col => col.id === c.id ? { ...col, collected: true } : col));
-                
-                switch (c.type) {
-                  case "coin":
-                    setCoins(prev => prev + 1);
-                    setScore(prev => prev + 10);
-                    break;
-                  case "gem":
-                    setCoins(prev => prev + 5);
-                    setScore(prev => prev + 50);
-                    break;
-                  case "star":
-                    setScore(prev => prev + 100);
-                    setCombo(prev => prev + 1);
-                    setShowCombo(true);
-                    setTimeout(() => setShowCombo(false), 1000);
-                    break;
-                  case "turbo":
-                    newSpeed = 6;
-                    setTimeout(() => setPacket(p => ({ ...p, speed: 3 })), 5000);
-                    break;
-                  case "shield":
-                    setPacket(p => ({ ...p, hasShield: true }));
-                    setTimeout(() => setPacket(p => ({ ...p, hasShield: false })), 8000);
-                    break;
-                  case "magnet":
-                    setPacket(p => ({ ...p, hasMagnet: true }));
-                    setTimeout(() => setPacket(p => ({ ...p, hasMagnet: false })), 6000);
-                    break;
-                  case "key":
-                    setScore(prev => prev + 200);
-                    break;
-                }
-              }
-            }
+      setPackets(prev => {
+        const updated = prev.map(packet => {
+          if (packet.progress >= packet.path.length - 1) {
+            // Packet delivered
+            setPacketsDelivered(p => p + 1);
+            setScore(s => s + 20);
+            return null;
           }
-        });
 
-        // Check obstacles
-        obstacles.forEach(o => {
-          if (
-            newX > o.x - 30 && 
-            newX < o.x + o.width + 30 && 
-            newY > o.y - 30 && 
-            newY < o.y + o.height + 30
-          ) {
-            if (!prev.hasShield) {
-              setLives(prev => Math.max(0, prev - 1));
-              setCombo(0);
-            }
-            // Push back
-            newX = Math.max(0, o.x - 50);
-          }
-        });
+          const nextNodeId = packet.path[packet.progress + 1];
+          const nextDevice = devices.find(d => d.id === nextNodeId);
+          if (!nextDevice) return packet;
 
-        // Update distance
-        const newDistance = distance + newSpeed;
-        setDistance(newDistance);
+          return {
+            ...packet,
+            x: packet.x + (nextDevice.x - packet.x) * 0.1,
+            y: packet.y + (nextDevice.y - packet.y) * 0.1,
+            progress: packet.progress + 0.1,
+          };
+        }).filter(p => p !== null) as Packet[];
 
-        // Check victory
-        if (newDistance >= targetDistance) {
-          const stars = score >= 500 ? 3 : score >= 300 ? 2 : score >= 100 ? 1 : 0;
-          if (stars > 0) {
-            saveProgress(world * 10 + level, stars);
-          }
-          setIsPlaying(false);
-          setVictory(true);
-          setGameOver(true);
-          
-          // Unlock skins based on achievements
-          if (score >= 300 && !unlockedSkins.includes("rainbow")) {
-            setUnlockedSkins(prev => [...prev, "rainbow"]);
-            localStorage.setItem("unlockedSkins", JSON.stringify([...unlockedSkins, "rainbow"]));
-          }
-          if (maxCombo >= 5 && !unlockedSkins.includes("star")) {
-            setUnlockedSkins(prev => [...prev, "star"]);
-            localStorage.setItem("unlockedSkins", JSON.stringify([...unlockedSkins, "star"]));
-          }
-        }
-
-        return { ...prev, x: newX, y: newY, speed: newSpeed, trail: newTrail };
+        return updated;
       });
-
-      // Update max combo
-      setMaxCombo(prev => Math.max(prev, combo));
-    }, 16);
+    }, 50);
 
     return () => clearInterval(interval);
-  }, [isPlaying, isPaused, collectibles, obstacles, distance, targetDistance, score, combo, maxCombo, unlockedSkins]);
+  }, [isPlaying, isPaused, devices]);
 
-  // Check for game over
+  // Auto-send packets between connected devices
   useEffect(() => {
-    if (lives <= 0 && isPlaying) {
-      setIsPlaying(false);
-      setGameOver(true);
-      setVictory(false);
-    }
-  }, [lives, isPlaying]);
+    if (!isPlaying || isPaused || connections.length === 0) return;
+
+    const interval = setInterval(() => {
+      if (connections.length > 0 && devices.length > 1) {
+        const randomConnection = connections[Math.floor(Math.random() * connections.length)];
+        sendPacket(randomConnection.from, randomConnection.to);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, isPaused, connections, devices]);
 
   return (
-    <div className="min-h-dvh overflow-hidden" style={{ background: `linear-gradient(180deg, ${currentWorld.bgFrom} 0%, ${currentWorld.bgTo} 100%)` }}>
+    <div className="min-h-dvh bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900">
       {/* Tutorial Modal */}
       {showTutorial && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur z-50">
           <div className="bg-white rounded-3xl p-8 max-w-lg mx-4 text-center shadow-2xl">
-            <div className="text-6xl mb-4">📦✨</div>
-            <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Welcome to Packet Race!
+            <div className="text-6xl mb-4">🌐✨</div>
+            <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Network Builder!
             </h2>
             <div className="space-y-4 text-gray-700 text-left">
-              <p className="text-lg font-semibold">You're a magical data packet!</p>
-              <div className="bg-purple-50 rounded-xl p-4 space-y-2">
-                <p><strong>🎮 Controls:</strong></p>
-                <p>• Arrow keys or WASD to move</p>
-                <p>• Space or Escape to pause</p>
-              </div>
-              <div className="bg-yellow-50 rounded-xl p-4 space-y-2">
-                <p><strong>🎯 Goal:</strong></p>
-                <p>• Collect coins and gems for points</p>
-                <p>• Avoid rocks and obstacles</p>
-                <p>• Reach the finish line!</p>
+              <p className="text-lg font-semibold">Build your own computer network!</p>
+              <div className="bg-blue-50 rounded-xl p-4 space-y-2">
+                <p><strong>🎮 How to Play:</strong></p>
+                <p>• Click a device type in the toolbox</p>
+                <p>• Click on the game area to place it</p>
+                <p>• Click two devices to connect them with a cable</p>
               </div>
               <div className="bg-green-50 rounded-xl p-4 space-y-2">
-                <p><strong>⚡ Power-ups:</strong></p>
-                <p>• 🚀 Turbo = Super speed!</p>
-                <p>• 🛡️ Shield = Protects you!</p>
-                <p>• 🧲 Magnet = Attracts coins!</p>
+                <p><strong>🎯 Goal:</strong></p>
+                <p>• Connect {targetDevices} devices</p>
+                <p>• Deliver 5 data packets</p>
+                <p>• Watch data flow through your network!</p>
+              </div>
+              <div className="bg-yellow-50 rounded-xl p-4 space-y-2">
+                <p><strong>💡 Learn:</strong></p>
+                <p>• Routers connect different networks</p>
+                <p>• Servers store and share data</p>
+                <p>• Data travels through connections</p>
               </div>
             </div>
             <button
               onClick={() => setShowTutorial(false)}
-              className="w-full mt-6 py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:scale-105 transition shadow-lg"
+              className="w-full mt-6 py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:scale-105 transition shadow-lg"
             >
-              Let's Go! 🚀
+              Let's Build! 🚀
             </button>
           </div>
         </div>
@@ -478,16 +387,15 @@ function PacketRace() {
           <div className="bg-white rounded-3xl p-8 max-w-md mx-4 text-center shadow-2xl">
             <div className="text-6xl mb-4">{victory ? "🎉" : "💔"}</div>
             <h2 className="text-3xl font-bold mb-4">
-              {victory ? "You Made It!" : "Try Again!"}
+              {victory ? "Network Complete!" : "Try Again!"}
             </h2>
             <div className="text-5xl mb-4">
-              {victory ? (score >= 500 ? "⭐⭐⭐" : score >= 300 ? "⭐⭐" : "⭐") : "😢"}
+              {victory ? (score >= 100 ? "⭐⭐⭐" : score >= 50 ? "⭐⭐" : "⭐") : "😢"}
             </div>
             <div className="space-y-2 mb-6">
               <p className="text-2xl font-bold text-purple-600">Score: {score}</p>
-              <p className="text-lg text-gray-600">Coins: {coins} 🪙</p>
-              <p className="text-lg text-gray-600">Distance: {Math.floor(distance)}m</p>
-              {maxCombo > 0 && <p className="text-lg text-yellow-600">Best Combo: {maxCombo}x 🔥</p>}
+              <p className="text-lg text-gray-600">Devices: {devices.length}</p>
+              <p className="text-lg text-gray-600">Packets: {packetsDelivered}</p>
             </div>
             <div className="flex gap-3">
               <button
@@ -495,7 +403,7 @@ function PacketRace() {
                 className="flex-1 py-3 rounded-xl font-bold text-white transition hover:scale-105 shadow-lg"
                 style={{ background: currentWorld.color }}
               >
-                <RotateCcw className="inline mr-2 h-5 w-5" /> Play Again
+                <RotateCcw className="inline mr-2 h-5 w-5" /> Build Again
               </button>
               <button
                 onClick={() => { setGameOver(false); setVictory(false); }}
@@ -510,7 +418,7 @@ function PacketRace() {
 
       {/* Header */}
       <header className="border-b border-white/20 bg-black/30 backdrop-blur sticky top-0 z-30">
-        <div className="mx-auto max-w-4xl px-6 h-16 flex items-center justify-between">
+        <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
           <Link to="/child/$childId" params={{ childId: childId || "" }} className="flex items-center gap-2 text-white hover:opacity-80 transition">
             <ArrowLeft className="h-5 w-5" />
             Back
@@ -531,41 +439,17 @@ function PacketRace() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-6xl px-6 py-8">
         {!isPlaying && !gameOver && (
           <div className="text-center">
             <div className="text-8xl mb-4">{currentWorld.emoji}</div>
-            <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">Packet Race</h1>
+            <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">Network Builder</h1>
             <p className="text-purple-200 mb-6 text-lg">{currentWorld.description}</p>
-
-            {/* Skin Selector */}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-white mb-4">Choose Your Packet</h3>
-              <div className="flex flex-wrap justify-center gap-3">
-                {SKINS.map((skin) => (
-                  <button
-                    key={skin.id}
-                    onClick={() => {
-                      if (unlockedSkins.includes(skin.id)) {
-                        setSelectedSkin(skin);
-                      }
-                    }}
-                    disabled={!unlockedSkins.includes(skin.id)}
-                    className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition ${
-                      selectedSkin.id === skin.id ? "ring-4 ring-white scale-110" : "hover:scale-105"
-                    } ${!unlockedSkins.includes(skin.id) ? "opacity-50 grayscale" : ""}`}
-                    style={{ background: skin.color }}
-                  >
-                    {unlockedSkins.includes(skin.id) ? skin.emoji : "🔒"}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* World Selector */}
             <div className="mb-8">
               <h3 className="text-xl font-bold text-white mb-4">Select World</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {WORLDS.map((w, i) => (
                   <button
                     key={i}
@@ -587,7 +471,7 @@ function PacketRace() {
               className="px-12 py-5 rounded-2xl font-bold text-white text-2xl transition hover:scale-105 flex items-center gap-3 mx-auto shadow-2xl"
               style={{ background: currentWorld.color }}
             >
-              <Play className="h-8 w-8" /> Start Race!
+              <Play className="h-8 w-8" /> Start Building!
             </button>
           </div>
         )}
@@ -602,12 +486,12 @@ function PacketRace() {
                   <div className="text-xs text-purple-200">Score</div>
                 </div>
                 <div className="text-white">
-                  <div className="text-2xl font-bold">{coins} 🪙</div>
-                  <div className="text-xs text-purple-200">Coins</div>
+                  <div className="text-2xl font-bold">{devices.length}/{targetDevices}</div>
+                  <div className="text-xs text-purple-200">Devices</div>
                 </div>
                 <div className="text-white">
-                  <div className="text-2xl font-bold">{Math.floor(distance)}m</div>
-                  <div className="text-xs text-purple-200">Distance</div>
+                  <div className="text-2xl font-bold">{packetsDelivered}/5</div>
+                  <div className="text-xs text-purple-200">Packets</div>
                 </div>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3].map((i) => (
@@ -618,146 +502,159 @@ function PacketRace() {
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                {showCombo && combo > 0 && (
-                  <div className="text-yellow-400 font-bold text-xl animate-pulse">
-                    {combo}x COMBO! 🔥
-                  </div>
-                )}
-                {packet.hasTurbo && <Zap className="h-6 w-6 text-yellow-400 animate-pulse" />}
-                {packet.hasShield && <Shield className="h-6 w-6 text-blue-400" />}
-                {packet.hasMagnet && <Sparkles className="h-6 w-6 text-purple-400" />}
-                <button
-                  onClick={isPaused ? resumeGame : pauseGame}
-                  className="px-4 py-2 rounded-lg bg-white/20 text-white font-bold hover:bg-white/30 transition"
-                >
-                  {isPaused ? "▶️" : "⏸️"}
-                </button>
-              </div>
+              <button
+                onClick={isPaused ? resumeGame : pauseGame}
+                className="px-4 py-2 rounded-lg bg-white/20 text-white font-bold hover:bg-white/30 transition"
+              >
+                {isPaused ? "▶️" : "⏸️"}
+              </button>
             </div>
 
-            {/* Game Area */}
-            <div
-              ref={gameRef}
-              className="relative rounded-2xl overflow-hidden border-4 border-white/30 shadow-2xl"
-              style={{ height: "500px", background: `linear-gradient(180deg, ${currentWorld.bgFrom} 0%, ${currentWorld.bgTo} 100%)` }}
-            >
-              {/* Progress Bar */}
-              <div className="absolute top-0 left-0 right-0 h-3 bg-gray-800/50">
-                <div
-                  className="h-full transition-all relative"
-                  style={{ width: `${(distance / targetDistance) * 100}%`, background: currentWorld.color }}
-                >
-                  <div className="absolute right-0 top-0 bottom-0 w-2 bg-white animate-pulse" />
+            <div className="flex gap-4">
+              {/* Device Toolbox */}
+              <div className="w-48 bg-white/10 backdrop-blur rounded-2xl p-4 border border-white/20">
+                <h3 className="text-white font-bold mb-4">Devices</h3>
+                <div className="space-y-2">
+                  {DEVICE_TYPES.map((dt) => (
+                    <button
+                      key={dt.type}
+                      onClick={() => setSelectedDevice({ id: "", type: dt.type, x: 0, y: 0, connected: false })}
+                      className={`w-full p-3 rounded-xl flex items-center gap-2 transition ${
+                        selectedDevice?.type === dt.type ? "ring-2 ring-white" : "hover:bg-white/10"
+                      }`}
+                      style={{ background: dt.color + "30" }}
+                    >
+                      <dt.icon className="h-5 w-5" style={{ color: dt.color }} />
+                      <span className="text-white text-sm font-semibold">{dt.name}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Finish Line */}
+              {/* Game Area */}
               <div
-                className="absolute top-0 bottom-0 w-4 flex items-center justify-center"
-                style={{ 
-                  left: targetDistance,
-                  background: "repeating-linear-gradient(45deg, #000, #000 10px, #fff 10px, #fff 20px)"
+                ref={gameRef}
+                className="flex-1 rounded-2xl overflow-hidden border-4 border-white/30 shadow-2xl relative"
+                style={{ height: "500px", background: "linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%" }}
+                onClick={(e) => {
+                  if (!selectedDevice) return;
+                  const rect = gameRef.current?.getBoundingClientRect();
+                  if (!rect) return;
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  addDevice(selectedDevice.type, x, y);
+                  setSelectedDevice(null);
                 }}
               >
-                <div className="text-4xl">🏁</div>
-              </div>
+                {/* Connections */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                  {connections.map((conn) => {
+                    const fromDevice = devices.find(d => d.id === conn.from);
+                    const toDevice = devices.find(d => d.id === conn.to);
+                    if (!fromDevice || !toDevice) return null;
+                    return (
+                      <line
+                        key={conn.id}
+                        x1={fromDevice.x}
+                        y1={fromDevice.y}
+                        x2={toDevice.x}
+                        y2={toDevice.y}
+                        stroke={conn.active ? "#10B981" : "#6B7280"}
+                        strokeWidth="3"
+                        strokeDasharray={conn.active ? "0" : "5,5"}
+                      />
+                    );
+                  })}
+                </svg>
 
-              {/* Trail */}
-              {packet.trail.map((pos, i) => (
-                <div
-                  key={i}
-                  className="absolute w-4 h-4 rounded-full opacity-50"
-                  style={{
-                    left: pos.x,
-                    top: pos.y,
-                    transform: "translate(-50%, -50%)",
-                    background: selectedSkin.color,
-                    opacity: (i / packet.trail.length) * 0.5,
-                  }}
-                />
-              ))}
+                {/* Devices */}
+                {devices.map((device) => {
+                  const deviceType = DEVICE_TYPES.find(dt => dt.type === device.type);
+                  const Icon = deviceType?.icon || Laptop;
+                  return (
+                    <div
+                      key={device.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (connectingFrom === null) {
+                          setConnectingFrom(device.id);
+                        } else if (connectingFrom === device.id) {
+                          setConnectingFrom(null);
+                        } else {
+                          addConnection(connectingFrom, device.id);
+                          setConnectingFrom(null);
+                        }
+                      }}
+                      className={`absolute w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition ${
+                        connectingFrom === device.id ? "ring-4 ring-yellow-400" : "hover:scale-110"
+                      } ${device.connected ? "bg-green-500/30" : "bg-gray-500/30"}`}
+                      style={{
+                        left: device.x,
+                        top: device.y,
+                        transform: "translate(-50%, -50%)",
+                        background: deviceType?.color + "30",
+                        border: `2px solid ${deviceType?.color}`,
+                      }}
+                    >
+                      <Icon className="h-6 w-6" style={{ color: deviceType?.color }} />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeDevice(device.id);
+                        }}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs hover:bg-red-600"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
 
-              {/* Packet */}
-              <div
-                className="absolute w-14 h-14 rounded-full flex items-center justify-center text-3xl transition-all shadow-2xl"
-                style={{
-                  left: packet.x,
-                  top: packet.y,
-                  transform: "translate(-50%, -50%)",
-                  background: packet.hasTurbo ? "#F59E0B" : packet.hasShield ? "#3B82F6" : selectedSkin.color,
-                  boxShadow: `0 0 30px ${packet.hasTurbo ? "#F59E0B" : packet.hasShield ? "#3B82F6" : selectedSkin.color}`,
-                  zIndex: 10,
-                }}
-              >
-                {selectedSkin.emoji}
-              </div>
-
-              {/* Collectibles */}
-              {collectibles.map((c) => (
-                !c.collected && (
+                {/* Packets */}
+                {packets.map((packet) => (
                   <div
-                    key={c.id}
-                    className="absolute w-10 h-10 rounded-full flex items-center justify-center text-2xl animate-bounce"
+                    key={packet.id}
+                    className="absolute w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center text-xs"
                     style={{
-                      left: c.x,
-                      top: c.y,
+                      left: packet.x,
+                      top: packet.y,
                       transform: "translate(-50%, -50%)",
-                      animationDelay: `${Math.random() * 0.5}s`,
+                      boxShadow: "0 0 10px #F59E0B",
                     }}
                   >
-                    {c.type === "coin" && "🪙"}
-                    {c.type === "gem" && "💎"}
-                    {c.type === "star" && "⭐"}
-                    {c.type === "turbo" && "🚀"}
-                    {c.type === "shield" && "🛡️"}
-                    {c.type === "magnet" && "🧲"}
-                    {c.type === "key" && "🔑"}
+                    📦
                   </div>
-                )
-              ))}
+                ))}
 
-              {/* Obstacles */}
-              {obstacles.map((o) => (
-                <div
-                  key={o.id}
-                  className="absolute flex items-center justify-center text-4xl"
-                  style={{
-                    left: o.x,
-                    top: o.y,
-                    width: o.width,
-                    height: o.height,
-                    transform: "translate(-50%, -50%)",
-                  }}
-                >
-                  {o.type === "rock" && "🪨"}
-                  {o.type === "spike" && "🔺"}
-                  {o.type === "cloud" && "☁️"}
-                  {o.type === "virus" && "🦠"}
-                </div>
-              ))}
-
-              {/* Paused Overlay */}
-              {isPaused && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur">
-                  <div className="text-center">
-                    <div className="text-6xl mb-4">⏸️</div>
-                    <h2 className="text-3xl font-bold text-white mb-4">Paused</h2>
-                    <button
-                      onClick={resumeGame}
-                      className="px-8 py-3 rounded-xl font-bold text-white transition hover:scale-105"
-                      style={{ background: currentWorld.color }}
-                    >
-                      Resume
-                    </button>
+                {/* Connecting indicator */}
+                {connectingFrom && (
+                  <div className="absolute bottom-4 left-4 bg-yellow-500 text-white px-3 py-1 rounded-lg text-sm">
+                    Select another device to connect
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* Paused Overlay */}
+                {isPaused && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur">
+                    <div className="text-center">
+                      <div className="text-6xl mb-4">⏸️</div>
+                      <h2 className="text-3xl font-bold text-white mb-4">Paused</h2>
+                      <button
+                        onClick={resumeGame}
+                        className="px-8 py-3 rounded-xl font-bold text-white transition hover:scale-105"
+                        style={{ background: currentWorld.color }}
+                      >
+                        Resume
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Mobile Controls Hint */}
+            {/* Instructions */}
             <div className="mt-4 text-center text-white/60 text-sm">
-              Use Arrow Keys or WASD to move • Space to pause
+              Click device type → Click to place → Click two devices to connect • Watch data flow!
             </div>
           </>
         )}
@@ -807,4 +704,3 @@ function PacketRace() {
     </div>
   );
 }
-
