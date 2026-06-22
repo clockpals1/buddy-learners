@@ -152,29 +152,30 @@ CREATE POLICY "Admins manage enrollments" ON public.enrollments FOR ALL TO authe
   USING (public.has_role(auth.uid(), 'super_admin') OR public.has_role(auth.uid(), 'instructor'));
 
 -- Add game progress table for tracking user game completion
--- game_progress table with child_id (skip if already exists)
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'game_progress' AND table_schema = 'public') THEN
-    CREATE TABLE public.game_progress (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-      child_id UUID REFERENCES public.children(id) ON DELETE CASCADE,
-      game_slug TEXT NOT NULL,
-      level INTEGER NOT NULL,
-      stars INTEGER NOT NULL CHECK (stars >= 1 AND stars <= 3),
-      completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      UNIQUE(user_id, child_id, game_slug, level)
-    );
+-- NOTE: This section is commented out because the table already exists
+-- The migration has already been applied successfully
+-- DO $$
+-- BEGIN
+--   IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'game_progress' AND table_schema = 'public') THEN
+--     CREATE TABLE public.game_progress (
+--       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--       user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+--       child_id UUID REFERENCES public.children(id) ON DELETE CASCADE,
+--       game_slug TEXT NOT NULL,
+--       level INTEGER NOT NULL,
+--       stars INTEGER NOT NULL CHECK (stars >= 1 AND stars <= 3),
+--       completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+--       UNIQUE(user_id, child_id, game_slug, level)
+--     );
 
-    ALTER TABLE public.game_progress ENABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS "Users manage own game progress" ON public.game_progress;
-    CREATE POLICY "Users manage own game progress" ON public.game_progress FOR ALL
-      TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-    DROP POLICY IF EXISTS "Admins read all game progress" ON public.game_progress;
-    CREATE POLICY "Admins read all game progress" ON public.game_progress FOR SELECT
-      TO authenticated USING (
-        EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'instructor'))
-      );
-  END IF;
-END $$;
+--     ALTER TABLE public.game_progress ENABLE ROW LEVEL SECURITY;
+--     DROP POLICY IF EXISTS "Users manage own game progress" ON public.game_progress;
+--     CREATE POLICY "Users manage own game progress" ON public.game_progress FOR ALL
+--       TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+--     DROP POLICY IF EXISTS "Admins read all game progress" ON public.game_progress;
+--     CREATE POLICY "Admins read all game progress" ON public.game_progress FOR SELECT
+--       TO authenticated USING (
+--         EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'instructor'))
+--       );
+--   END IF;
+-- END $$;
