@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowLeft, RotateCcw, Play, Star, X, Heart, Trophy, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -44,6 +44,8 @@ function TypingNinjas() {
   const [leaderboard, setLeaderboard] = useState<{ name: string; score: number; child_id: string }[]>([]);
 
   const gameRef = useRef<HTMLDivElement>(null);
+  const spawnIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentWorld = WORLDS[world];
   const speedMultiplier = 1 + (level * 0.1);
@@ -133,13 +135,27 @@ function TypingNinjas() {
     setLetters(prev => [...prev, newLetter]);
   }
 
-  // Spawn letters periodically
-  useEffect(() => {
+  function gameLoop() {
     if (!isPlaying || isPaused) return;
 
-    const interval = setInterval(spawnLetter, spawnRate);
-    return () => clearInterval(interval);
-  }, [isPlaying, isPaused, spawnRate]);
+    setLetters(prev => {
+      const updated = prev.map(letter => ({
+        ...letter,
+        y: letter.y + letter.speed,
+      }));
+
+      // Check for letters that hit the ground
+      const missed = updated.filter(l => l.y > 500);
+      if (missed.length > 0) {
+        setLives(prev => Math.max(0, prev - missed.length));
+        setCombo(0);
+      }
+
+      return updated.filter(l => l.y <= 500);
+    });
+
+    gameLoopRef.current = setTimeout(gameLoop, 16);
+  }
 
   function startGame() {
     setIsPlaying(true);
@@ -148,46 +164,37 @@ function TypingNinjas() {
     setLives(3);
     setCombo(0);
     setLetters([]);
-    // Spawn first letter after delay
-    setTimeout(spawnLetter, 500);
+    
+    // Clear any existing intervals
+    if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
+    if (gameLoopRef.current) clearTimeout(gameLoopRef.current);
+    
+    // Start spawning letters
+    spawnLetter();
+    spawnIntervalRef.current = setInterval(spawnLetter, spawnRate);
+    
+    // Start game loop
+    gameLoopRef.current = setTimeout(gameLoop, 16);
   }
 
   function pauseGame() {
     setIsPaused(true);
+    if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
+    if (gameLoopRef.current) clearTimeout(gameLoopRef.current);
   }
 
   function resumeGame() {
     setIsPaused(false);
+    spawnLetter();
+    spawnIntervalRef.current = setInterval(spawnLetter, spawnRate);
+    gameLoopRef.current = setTimeout(gameLoop, 16);
   }
-
-  // Game loop using useEffect
-  useEffect(() => {
-    if (!isPlaying || isPaused) return;
-
-    const interval = setInterval(() => {
-      setLetters(prev => {
-        const updated = prev.map(letter => ({
-          ...letter,
-          y: letter.y + letter.speed,
-        }));
-
-        // Check for letters that hit the ground
-        const missed = updated.filter(l => l.y > 500);
-        if (missed.length > 0) {
-          setLives(prev => Math.max(0, prev - missed.length));
-          setCombo(0);
-        }
-
-        return updated.filter(l => l.y <= 500);
-      });
-    }, 16);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, isPaused]);
 
   function endGame() {
     setIsPlaying(false);
     setIsPaused(false);
+    if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
+    if (gameLoopRef.current) clearTimeout(gameLoopRef.current);
 
     // Calculate stars based on score
     const stars = score >= 100 ? 3 : score >= 50 ? 2 : score >= 20 ? 1 : 0;
@@ -202,7 +209,7 @@ function TypingNinjas() {
     }
   }, [lives, isPlaying]);
 
-  function handleKeyPress(e: KeyboardEvent) {
+  const handleKeyPress = useCallback((e: KeyboardEvent) => {
     if (!isPlaying || isPaused) return;
 
     const key = e.key.toUpperCase();
@@ -224,12 +231,12 @@ function TypingNinjas() {
       setCombo(0);
       setLives(prev => Math.max(0, prev - 1));
     }
-  }
+  }, [letters, isPlaying, isPaused, combo]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [letters, isPlaying, isPaused]);
+  }, [handleKeyPress]);
 
   function getComboEffect() {
     if (combo >= 30) return { text: "Golden Keyboard Fury!", color: "#FFD700" };
