@@ -168,16 +168,18 @@ DO $$ BEGIN
   ALTER TABLE public.game_progress ADD COLUMN IF NOT EXISTS child_id UUID REFERENCES public.children(id) ON DELETE CASCADE;
 EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 
--- Drop old unique constraint and add new one with child_id
-DO $$ BEGIN
-  ALTER TABLE public.game_progress DROP CONSTRAINT IF EXISTS game_progress_user_id_game_slug_level_key;
-EXCEPTION WHEN undefined_object THEN NULL; END $$;
-
--- Add new unique constraint with child_id
-DO $$ BEGIN
-  ALTER TABLE public.game_progress ADD CONSTRAINT game_progress_user_id_child_id_game_slug_level_key
-    UNIQUE(user_id, child_id, game_slug, level);
-EXCEPTION WHEN duplicate_table THEN NULL; END $$;
+-- Only modify constraints if the old one exists (meaning migration hasn't been applied yet)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'game_progress_user_id_game_slug_level_key'
+  ) THEN
+    ALTER TABLE public.game_progress DROP CONSTRAINT game_progress_user_id_game_slug_level_key;
+    ALTER TABLE public.game_progress ADD CONSTRAINT game_progress_user_id_child_id_game_slug_level_key
+      UNIQUE(user_id, child_id, game_slug, level);
+  END IF;
+END $$;
 
 -- Enable RLS on game_progress
 ALTER TABLE public.game_progress ENABLE ROW LEVEL SECURITY;
