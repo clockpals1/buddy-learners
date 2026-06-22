@@ -152,18 +152,5 @@ CREATE POLICY "Admins manage enrollments" ON public.enrollments FOR ALL TO authe
   USING (public.has_role(auth.uid(), 'super_admin') OR public.has_role(auth.uid(), 'instructor'));
 
 -- Add game progress table for tracking user game completion
--- Drop existing constraint if it exists, then recreate to ensure it's correct
-DO $$
-BEGIN
-  -- Drop the constraint if it exists
-  IF EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'game_progress_user_id_child_id_game_slug_level_key'
-  ) THEN
-    ALTER TABLE public.game_progress DROP CONSTRAINT game_progress_user_id_child_id_game_slug_level_key;
-  END IF;
-
-  -- Recreate the constraint
-  ALTER TABLE public.game_progress ADD CONSTRAINT game_progress_user_id_child_id_game_slug_level_key
-    UNIQUE(user_id, child_id, game_slug, level);
-END $$;
+-- NOTE: game_progress table already exists with correct constraint
+-- No migration needed for this table
