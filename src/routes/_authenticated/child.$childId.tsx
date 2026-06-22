@@ -24,7 +24,9 @@ const TRACK_META: Record<string, { label: string; color: string; emoji: string; 
 const GAMES = [
   { slug: "pixel-pet-coder", name: "Pixel Pet Coder", desc: "Block-code your pet through mazes", emoji: "🐾", tracks: ["spark_cubs"], soon: false },
   { slug: "typing-ninjas", name: "Typing Ninjas", desc: "Build speed and accuracy with fun exercises", emoji: "⌨️", tracks: ["spark_cubs", "code_rangers"], soon: false },
-  { slug: "packet-race", name: "Packet Race", desc: "Race your data packet through the internet!", emoji: "📦", tracks: ["spark_cubs", "code_rangers"], soon: false },
+  { slug: "packet-race", name: "Network Builder", desc: "Build your own computer network!", emoji: "🌐", tracks: ["spark_cubs", "code_rangers"], soon: false },
+  { slug: "math-maze", name: "Math Maze Master", desc: "Solve math puzzles to unlock magical maze doors!", emoji: "�️", tracks: ["spark_cubs", "code_rangers"], soon: false },
+  { slug: "security-sentinel", name: "Security Sentinel", desc: "Defend Cyber City from hackers!", emoji: "🛡️", tracks: ["code_rangers", "cyber_pioneers"], soon: false },
   { slug: "bug-hunt-squad", name: "Bug Hunt Squad", desc: "Find and squash code bugs before the timer runs out", emoji: "🐛", tracks: ["code_rangers"], soon: false },
   { slug: "scam-spotter", name: "Scam Spotter", desc: "Learn to identify phishing, scams, and fake news", emoji: "🔍", tracks: ["code_rangers", "cyber_pioneers"], soon: true },
   { slug: "cipher-quest", name: "Cipher Quest", desc: "Decode secret messages and learn cryptography", emoji: "🔐", tracks: ["cyber_pioneers"], soon: true },
@@ -318,7 +320,7 @@ function GamesTab({ childId, track, meta }: { childId: string; track: string; me
               <p className="text-sm" style={{ color: "oklch(0.55 0.01 270)" }}>{g.desc}</p>
               {!g.soon && !isLocked && (
                 <Link
-                  to={g.slug === "pixel-pet-coder" ? "/games/pixel-pet-coder" : g.slug === "typing-ninjas" ? "/games/typing-ninjas" : g.slug === "packet-race" ? "/games/packet-race" : "#"}
+                  to={g.slug === "pixel-pet-coder" ? "/games/pixel-pet-coder" : g.slug === "typing-ninjas" ? "/games/typing-ninjas" : g.slug === "packet-race" ? "/games/packet-race" : g.slug === "math-maze" ? "/games/math-maze" : g.slug === "security-sentinel" ? "/games/security-sentinel" : "#"}
                   search={{ childId }}
                   className="mt-4 w-full py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 flex items-center justify-center"
                   style={{ background: meta.color, color: "white" }}
