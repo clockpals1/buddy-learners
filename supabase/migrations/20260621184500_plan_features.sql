@@ -173,8 +173,11 @@ DO $$ BEGIN
   ALTER TABLE public.game_progress DROP CONSTRAINT IF EXISTS game_progress_user_id_game_slug_level_key;
 EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
-ALTER TABLE public.game_progress ADD CONSTRAINT game_progress_user_id_child_id_game_slug_level_key
-  UNIQUE(user_id, child_id, game_slug, level);
+-- Add new unique constraint with child_id
+DO $$ BEGIN
+  ALTER TABLE public.game_progress ADD CONSTRAINT game_progress_user_id_child_id_game_slug_level_key
+    UNIQUE(user_id, child_id, game_slug, level);
+EXCEPTION WHEN duplicate_table THEN NULL; END $$;
 
 -- Enable RLS on game_progress
 ALTER TABLE public.game_progress ENABLE ROW LEVEL SECURITY;
