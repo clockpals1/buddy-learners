@@ -139,7 +139,7 @@ function NetworkBuilder() {
 
     if (progress) {
       let total = 0;
-      progress.forEach((p: any) total += p.stars);
+      progress.forEach((p) => total += p.stars);
       setTotalStars(total);
     }
   }
